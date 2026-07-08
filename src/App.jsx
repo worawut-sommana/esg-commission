@@ -8,6 +8,7 @@ import Detail from './pages/Detail';
 import Compare from './pages/Compare';
 import Upload from './pages/Upload';
 import ExternalData from './pages/ExternalData';
+import FinancierMapping from './pages/FinancierMapping';
 import Settings from './pages/Settings';
 
 const ACCENT = '#3b5bdb';
@@ -54,7 +55,7 @@ function AppShell() {
         </CenteredMessage>
       )}
 
-      {status === 'ready' && !hasMonths && !['upload', 'external', 'settings'].includes(page) && (
+      {status === 'ready' && !hasMonths && !['upload', 'external', 'financierMap', 'settings'].includes(page) && (
         <CenteredMessage>
           <div className="font-bold text-[16px] mb-2">ยังไม่มีข้อมูลในระบบ</div>
           <div className="text-[#6b7686] text-[13.5px] mb-4">เริ่มต้นโดยอัปโหลดไฟล์ Excel รายคันของแบรนด์แรก</div>
@@ -64,7 +65,7 @@ function AppShell() {
         </CenteredMessage>
       )}
 
-      {status === 'ready' && (hasMonths || ['upload', 'external', 'settings'].includes(page)) && (
+      {status === 'ready' && (hasMonths || ['upload', 'external', 'financierMap', 'settings'].includes(page)) && (
         <main data-main className="flex-1 min-w-0 px-[34px] pt-[30px] pb-[60px] overflow-x-hidden">
           {page === 'dash' && <Dashboard />}
           {page === 'report' && <Report />}
@@ -72,6 +73,7 @@ function AppShell() {
           {page === 'compare' && <Compare />}
           {page === 'upload' && <Upload setPage={setPage} />}
           {page === 'external' && <ExternalData />}
+          {page === 'financierMap' && <FinancierMapping />}
           {page === 'settings' && <Settings />}
         </main>
       )}

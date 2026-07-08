@@ -85,3 +85,13 @@ CREATE TABLE IF NOT EXISTS external_sales (
 
 CREATE INDEX IF NOT EXISTS idx_external_sales_brand ON external_sales(brand);
 CREATE INDEX IF NOT EXISTS idx_external_sales_delivery_date ON external_sales(delivery_date);
+
+-- Maps the free-text sale_condition values returned by the external API
+-- (full legal bank/leasing names, e.g. "ธนาคารกรุงศรีอยุธยา จำกัด(มหาชน)")
+-- to the short financier codes used in uploaded Excel records (e.g. "AYCAL").
+CREATE TABLE IF NOT EXISTS financier_mapping (
+  id BIGSERIAL PRIMARY KEY,
+  external_value TEXT NOT NULL UNIQUE,
+  financier TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

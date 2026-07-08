@@ -265,7 +265,8 @@ export default function ExternalData() {
                     <th className={thR}>ราคาขาย</th>
                     <th className={thR}>ราคาส่ง</th>
                     <th className={thR}>MSRP</th>
-                    <th className={thC}>ทะเบียน</th>
+                    <th className={thR}>ค่าทะเบียน</th>
+                    <th className={thC}>สถานะทะเบียน</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,6 +289,7 @@ export default function ExternalData() {
                       <td className={tdR}>{f2(it.sale_price)}</td>
                       <td className={tdR}>{f2(it.wholesales)}</td>
                       <td className={tdR}>{f2(it.msrp)}</td>
+                      <td className={tdR}>{it.registration_total_paid != null ? f2(it.registration_total_paid) : '-'}</td>
                       <td className={tdC}>
                         {it.registration_paid ? (
                           <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">

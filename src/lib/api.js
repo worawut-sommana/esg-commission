@@ -61,3 +61,15 @@ export function saveExternalSalesData(items) {
     body: JSON.stringify({ items }),
   }).then(handle);
 }
+
+export function fetchFinancierMapping() {
+  return fetch('/api/financier-mapping').then(handle);
+}
+
+export function saveFinancierMapping(mappings) {
+  return fetch('/api/financier-mapping', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mappings }),
+  }).then(handle);
+}
