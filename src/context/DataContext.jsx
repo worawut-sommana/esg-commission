@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { fetchMonths, createMonth, deleteMonthApi } from '../lib/api';
+import { fetchMonths, createMonth, deleteMonthApi, addBrandToMonthApi } from '../lib/api';
 import { sum } from '../lib/seed';
 
 const DataContext = createContext(null);
@@ -43,6 +43,13 @@ export function DataProvider({ children }) {
     return created;
   };
 
+  const addBrandToMonth = async (monthId, brandEntry) => {
+    const updated = await addBrandToMonthApi(monthId, brandEntry);
+    setMonths((prev) => prev.map((m) => (m.id === monthId ? updated : m)));
+    setActiveMonthId(monthId);
+    return updated;
+  };
+
   const deleteMonth = async (id) => {
     await deleteMonthApi(id);
     setMonths((prev) => {
@@ -66,6 +73,7 @@ export function DataProvider({ children }) {
     reload: load,
     selectMonth,
     addMonth,
+    addBrandToMonth,
     deleteMonth,
   };
 

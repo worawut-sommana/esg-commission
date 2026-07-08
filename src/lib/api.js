@@ -28,3 +28,11 @@ export function createMonth(month) {
 export function deleteMonthApi(id) {
   return fetch(`/api/months/${id}`, { method: 'DELETE' }).then(handle);
 }
+
+export function addBrandToMonthApi(monthId, brandEntry) {
+  return fetch(`/api/months/${monthId}/brands`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(brandEntry),
+  }).then(handle);
+}

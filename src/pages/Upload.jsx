@@ -7,7 +7,7 @@ import { readVehicleExcelFile } from '../lib/excel';
 const BRAND_OPTIONS = Object.keys(PALETTE);
 
 export default function Upload({ setPage }) {
-  const { months, addMonth, deleteMonth } = useData();
+  const { months, addMonth, addBrandToMonth, deleteMonth } = useData();
 
   const [filePreview, setFilePreview] = useState(null);
   const [error, setError] = useState('');
@@ -16,6 +16,8 @@ export default function Upload({ setPage }) {
   const [brandChoice, setBrandChoice] = useState(BRAND_OPTIONS[0]);
   const [customBrand, setCustomBrand] = useState('');
   const [chunk2Input, setChunk2Input] = useState('0');
+  const [targetMode, setTargetMode] = useState('new'); // 'new' | 'existing'
+  const [targetMonthId, setTargetMonthId] = useState('');
 
   const [draftBrands, setDraftBrands] = useState([]);
   const [monthLabel, setMonthLabel] = useState('');
@@ -33,6 +35,8 @@ export default function Upload({ setPage }) {
       setBrandChoice(BRAND_OPTIONS[0]);
       setCustomBrand('');
       setChunk2Input('0');
+      setTargetMode('new');
+      setTargetMonthId(months.length ? months[months.length - 1].id : '');
     } catch (err) {
       setFilePreview(null);
       setError(err.message || 'อ่านไฟล์ไม่สำเร็จ');
@@ -57,7 +61,7 @@ export default function Upload({ setPage }) {
     setError('');
   };
 
-  const onAddBrand = () => {
+  const onAddBrand = async () => {
     if (!filePreview) return;
     const brand = brandChoice === '__other__' ? customBrand.trim().toUpperCase() : brandChoice;
     if (!brand) {
@@ -76,10 +80,34 @@ export default function Upload({ setPage }) {
       total: summary.com1 + chunk2 + summary.regDiff,
       records: records.map((r) => ({ ...r, brand })),
     };
+
+    if (targetMode === 'existing') {
+      if (!targetMonthId) {
+        setError('กรุณาเลือกรอบวางบิลที่จะเพิ่มแบรนด์เข้าไป');
+        return;
+      }
+      setSaving(true);
+      setError('');
+      try {
+        await addBrandToMonth(targetMonthId, entry);
+        setFilePreview(null);
+        setPage('dash');
+      } catch (err) {
+        setError(err.message || 'เพิ่มแบรนด์เข้ารอบไม่สำเร็จ กรุณาลองใหม่');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     setDraftBrands((prev) => [...prev.filter((b) => b.brand !== brand), entry]);
     setFilePreview(null);
     setError('');
   };
+
+  const targetMonth = months.find((m) => m.id === targetMonthId);
+  const brandForPreview = brandChoice === '__other__' ? customBrand.trim().toUpperCase() : brandChoice;
+  const willReplace = targetMode === 'existing' && targetMonth && targetMonth.brands.some((b) => b.brand === brandForPreview);
 
   const onRemoveDraftBrand = (brand) => {
     setDraftBrands((prev) => prev.filter((b) => b.brand !== brand));
@@ -131,7 +159,7 @@ export default function Upload({ setPage }) {
         <div className="text-xs font-semibold tracking-[0.06em] uppercase text-[var(--ac)] mb-[6px]">นำเข้าข้อมูล</div>
         <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">อัปโหลดไฟล์ Excel</h1>
         <div className="text-[#6b7686] text-[13.5px] mt-[6px]">
-          อัปโหลดไฟล์รายคันทีละแบรนด์ (.xlsx) จากนั้นเลือกแบรนด์และกรอกก้อน 2 (30%) เพื่อเพิ่มเข้ารอบ ทำซ้ำจนครบทุกแบรนด์แล้วจึงบันทึกทั้งรอบ
+          อัปโหลดไฟล์รายคันทีละแบรนด์ (.xlsx) แล้วเลือกได้ว่าจะสร้างรอบวางบิลใหม่ หรือเพิ่มเข้ารอบที่บันทึกไว้แล้ว (เช่น อัปโหลดคนละวันกัน)
         </div>
       </div>
 
@@ -227,12 +255,50 @@ export default function Upload({ setPage }) {
             </label>
           </div>
 
+          {months.length > 0 && (
+            <div className="flex gap-3 flex-wrap mb-5">
+              <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold flex-1 min-w-[200px]">
+                นำแบรนด์นี้ไปไว้ที่
+                <select
+                  value={targetMode}
+                  onChange={(e) => setTargetMode(e.target.value)}
+                  className={selectStyle + ' min-w-0!'}
+                >
+                  <option value="new">สร้างรอบวางบิลใหม่</option>
+                  <option value="existing">เพิ่มเข้ารอบที่มีอยู่แล้ว</option>
+                </select>
+              </label>
+              {targetMode === 'existing' && (
+                <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold flex-1 min-w-[200px]">
+                  รอบวางบิล
+                  <select
+                    value={targetMonthId}
+                    onChange={(e) => setTargetMonthId(e.target.value)}
+                    className={selectStyle + ' min-w-0!'}
+                  >
+                    {months.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          )}
+
+          {willReplace && (
+            <div className="mb-5 px-4 py-[12px] bg-[#fffbeb] border border-[#fde68a] rounded-xl text-[#92400e] text-[13px]">
+              แบรนด์ "{brandForPreview}" มีอยู่ในรอบนี้แล้ว การเพิ่มจะแทนที่ข้อมูลเดิมของแบรนด์นี้ทั้งหมด
+            </div>
+          )}
+
           <div className="flex gap-[10px] justify-end">
             <button onClick={onCancelPreview} className={btnGhost}>
               ยกเลิก
             </button>
-            <button onClick={onAddBrand} className={btnPrimary}>
-              เพิ่มแบรนด์นี้เข้ารอบ
+            <button onClick={onAddBrand} disabled={saving} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              {saving ? 'กำลังบันทึก...' : targetMode === 'existing' ? 'เพิ่มแบรนด์นี้เข้ารอบที่เลือก' : 'เพิ่มแบรนด์นี้เข้ารอบ'}
             </button>
           </div>
         </div>
