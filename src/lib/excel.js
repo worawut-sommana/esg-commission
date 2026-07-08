@@ -14,6 +14,18 @@ function isVinLike(v) {
   return /^[A-Z0-9]{6,20}$/i.test(s);
 }
 
+// วันที่ส่งมอบ cells are inconsistent in these files: some are typed as plain
+// text ("29/5/2569"), others are real Excel dates that come back as a raw
+// serial number when read with raw:true. Convert the numeric case so both end
+// up in the same d/m/y shape.
+export function formatDeliveryDate(value, XLSX) {
+  if (typeof value === 'number') {
+    const d = XLSX.SSF.parse_date_code(value);
+    if (d) return `${d.d}/${d.m}/${d.y}`;
+  }
+  return cellText(value);
+}
+
 // Header labels span multiple merged rows (main header + one or two sub-header
 // rows). We build a composite per-column string across those rows so a single
 // regex can match regardless of which row the label actually sits in.
@@ -159,7 +171,7 @@ export async function parseVehicleFile(arrayBuffer, fileName) {
       model: cols.model != null ? cellText(row[cols.model]) : '',
       vin: cols.vin != null ? cellText(row[cols.vin]) : '',
       financier: cols.financier != null ? cellText(row[cols.financier]) : '',
-      deliveryDate: cols.deliveryDate != null ? cellText(row[cols.deliveryDate]) : '',
+      deliveryDate: cols.deliveryDate != null ? formatDeliveryDate(row[cols.deliveryDate], XLSX) : '',
       branch: cols.branch != null ? cellText(row[cols.branch]) : '',
       price,
       com: com1,

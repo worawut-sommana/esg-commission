@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useData } from '../context/DataContext';
-import { card, thL, thR, tdL, tdR, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
+import { card, thL, thC, thR, thRhi, tdL, tdC, tdR, tdRhi, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, PALETTE } from '../lib/format';
 import { readVehicleExcelFile } from '../lib/excel';
 
@@ -25,6 +25,7 @@ export default function Upload({ setPage }) {
   const [monthDeduct, setMonthDeduct] = useState('');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [showPreviewTable, setShowPreviewTable] = useState(true);
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -45,6 +46,7 @@ export default function Upload({ setPage }) {
       setChunk2Input('0');
       setTargetMode('new');
       setTargetMonthId(months.length ? months[months.length - 1].id : '');
+      setShowPreviewTable(true);
     } catch (err) {
       setFilePreview(null);
       setError(err.message || 'อ่านไฟล์ไม่สำเร็จ');
@@ -214,6 +216,12 @@ export default function Upload({ setPage }) {
                 จากไฟล์ {filePreview.file} · ชีต "{filePreview.sheet}"
               </div>
             </div>
+            <button
+              onClick={() => setShowPreviewTable((v) => !v)}
+              className="text-[12.5px] font-semibold text-[var(--ac)] cursor-pointer bg-transparent border-none"
+            >
+              {showPreviewTable ? 'ซ่อนตัวอย่างข้อมูล' : `ดูตัวอย่างข้อมูล (${fi(filePreview.records.length)} รายการ)`}
+            </button>
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-[18px]">
@@ -230,6 +238,45 @@ export default function Upload({ setPage }) {
               <div className="text-[15px] font-bold mt-1">{f2(filePreview.summary.regDiff)}</div>
             </div>
           </div>
+
+          {showPreviewTable && (
+            <div className="mb-5 border border-[#eef1f5] rounded-xl overflow-hidden">
+              <div className="overflow-auto max-h-[360px]">
+                <table className="w-full border-collapse text-[12.5px] min-w-[820px]">
+                  <thead className="sticky top-0">
+                    <tr className="bg-[#f4f6fa]">
+                      <th className={thC}>#</th>
+                      <th className={thL}>ชื่อลูกค้า</th>
+                      <th className={thL}>รุ่นรถ</th>
+                      <th className={thL}>เลข VIN</th>
+                      <th className={thL}>เงื่อนไข</th>
+                      <th className={thL}>วันที่ส่งมอบ</th>
+                      <th className={thR}>ราคาขาย</th>
+                      <th className={thRhi}>ค่าคอม 1%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filePreview.records.map((r, i) => (
+                      <tr key={r.vin || i} className="border-b border-[#eef1f5] bg-white">
+                        <td className={tdC}>{i + 1}</td>
+                        <td className={tdL}>{r.name}</td>
+                        <td className={tdL}>
+                          <span className="inline-block px-[9px] py-[3px] bg-[#eef2fb] text-[var(--ac)] rounded-full text-[11.5px] font-semibold">
+                            {r.model}
+                          </span>
+                        </td>
+                        <td className={tdMono}>{r.vin}</td>
+                        <td className={tdL}>{r.financier || '-'}</td>
+                        <td className={tdL}>{r.deliveryDate || '-'}</td>
+                        <td className={tdR}>{f2(r.price)}</td>
+                        <td className={tdRhi}>{f2(r.com)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 flex-wrap mb-5">
             <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold flex-1 min-w-[160px]">
