@@ -32,8 +32,16 @@ export default function Upload({ setPage }) {
       const result = await readVehicleExcelFile(file);
       setFilePreview(result);
       setError('');
-      setBrandChoice(BRAND_OPTIONS[0]);
-      setCustomBrand('');
+      if (result.detectedBrand && BRAND_OPTIONS.includes(result.detectedBrand)) {
+        setBrandChoice(result.detectedBrand);
+        setCustomBrand('');
+      } else if (result.detectedBrand) {
+        setBrandChoice('__other__');
+        setCustomBrand(result.detectedBrand);
+      } else {
+        setBrandChoice(BRAND_OPTIONS[0]);
+        setCustomBrand('');
+      }
       setChunk2Input('0');
       setTargetMode('new');
       setTargetMonthId(months.length ? months[months.length - 1].id : '');
@@ -69,7 +77,7 @@ export default function Upload({ setPage }) {
       return;
     }
     const chunk2 = Number(String(chunk2Input).replace(/[^0-9.-]/g, '')) || 0;
-    const { summary, records } = filePreview;
+    const { summary, records, file, sourceFileBase64 } = filePreview;
     const entry = {
       brand,
       units: summary.units,
@@ -79,6 +87,8 @@ export default function Upload({ setPage }) {
       regDiff: summary.regDiff,
       total: summary.com1 + chunk2 + summary.regDiff,
       records: records.map((r) => ({ ...r, brand })),
+      sourceFilename: file,
+      sourceFileBase64,
     };
 
     if (targetMode === 'existing') {
@@ -379,23 +389,40 @@ export default function Upload({ setPage }) {
         <div className="font-bold text-[15px] mb-4">รอบวางบิลในระบบ ({months.length})</div>
         <div className="flex flex-col gap-[10px]">
           {months.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between gap-3 px-4 py-[14px] border border-[#eef1f5] rounded-xl bg-[#fafbfc]"
-            >
-              <div>
-                <div className="font-bold text-[14px]">{m.label}</div>
-                <div className="text-xs text-[#8a94a3] mt-[3px]">
-                  วางบิล {m.billing} · {(m.brands || []).length} แบรนด์ · รายได้สุทธิ {f2(m.net)}
+            <div key={m.id} className="px-4 py-[14px] border border-[#eef1f5] rounded-xl bg-[#fafbfc]">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-bold text-[14px]">{m.label}</div>
+                  <div className="text-xs text-[#8a94a3] mt-[3px]">
+                    วางบิล {m.billing} · {(m.brands || []).length} แบรนด์ · รายได้สุทธิ {f2(m.net)}
+                  </div>
                 </div>
+                <button
+                  onClick={() => onDeleteMonth(m.id)}
+                  disabled={deletingId === m.id}
+                  className="border border-[#fecaca] bg-white text-[#dc2626] px-3 py-2 rounded-[9px] text-[12.5px] font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {deletingId === m.id ? '...' : 'ลบ'}
+                </button>
               </div>
-              <button
-                onClick={() => onDeleteMonth(m.id)}
-                disabled={deletingId === m.id}
-                className="border border-[#fecaca] bg-white text-[#dc2626] px-3 py-2 rounded-[9px] text-[12.5px] font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {deletingId === m.id ? '...' : 'ลบ'}
-              </button>
+              {(m.brands || []).some((b) => b.sourceFilename) && (
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[#eef1f5]">
+                  {(m.brands || [])
+                    .filter((b) => b.sourceFilename)
+                    .map((b) => (
+                      <a
+                        key={b.brand}
+                        href={`/api/months/${m.id}/brands/${encodeURIComponent(b.brand)}/file`}
+                        className="inline-flex items-center gap-1 px-3 py-[6px] bg-white border border-[#d7dce4] rounded-full text-[11.5px] font-semibold text-[#5a6473] hover:border-[var(--ac)] hover:text-[var(--ac)]"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 15V3M8 11l4 4 4-4M20 17v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3" />
+                        </svg>
+                        {b.brand}: {b.sourceFilename}
+                      </a>
+                    ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

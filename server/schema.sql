@@ -16,8 +16,16 @@ CREATE TABLE IF NOT EXISTS brands (
   value NUMERIC NOT NULL DEFAULT 0,
   com1 NUMERIC NOT NULL DEFAULT 0,
   chunk2 NUMERIC NOT NULL DEFAULT 0,
-  reg_diff NUMERIC NOT NULL DEFAULT 0
+  reg_diff NUMERIC NOT NULL DEFAULT 0,
+  source_filename TEXT,
+  source_file BYTEA,
+  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Kept for databases created before these columns existed; harmless on fresh installs.
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS source_filename TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS source_file BYTEA;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS records (
   id BIGSERIAL PRIMARY KEY,

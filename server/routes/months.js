@@ -36,6 +36,8 @@ function shapeMonth(monthRow, brandRows, recordRows) {
     chunk2: toNum(b.chunk2),
     regDiff: toNum(b.reg_diff),
     total: brandTotal(b),
+    sourceFilename: b.source_filename || null,
+    uploadedAt: b.uploaded_at,
   }));
   const records = recordRows.map((r) => ({
     brand: r.brand,
@@ -61,11 +63,15 @@ function shapeMonth(monthRow, brandRows, recordRows) {
   };
 }
 
+// Brand columns without the source_file bytea — that blob is only fetched by
+// the dedicated download endpoint, never returned in list/detail responses.
+const BRAND_COLUMNS = 'id, month_id, brand, units, value, com1, chunk2, reg_diff, source_filename, uploaded_at';
+
 router.get('/', async (req, res, next) => {
   try {
     const [monthsR, brandsR, recordsR] = await Promise.all([
       pool.query('SELECT * FROM months ORDER BY created_at ASC'),
-      pool.query('SELECT * FROM brands ORDER BY id ASC'),
+      pool.query(`SELECT ${BRAND_COLUMNS} FROM brands ORDER BY id ASC`),
       pool.query('SELECT * FROM records ORDER BY id ASC'),
     ]);
 
@@ -90,10 +96,21 @@ router.get('/', async (req, res, next) => {
 });
 
 async function insertBrand(client, monthId, b) {
+  const sourceFile = b.sourceFileBase64 ? Buffer.from(b.sourceFileBase64, 'base64') : null;
   const r = await client.query(
-    `INSERT INTO brands (month_id, brand, units, value, com1, chunk2, reg_diff)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [monthId, b.brand, toNum(b.units), toNum(b.value), toNum(b.com1), toNum(b.chunk2), toNum(b.regDiff)]
+    `INSERT INTO brands (month_id, brand, units, value, com1, chunk2, reg_diff, source_filename, source_file)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${BRAND_COLUMNS}`,
+    [
+      monthId,
+      b.brand,
+      toNum(b.units),
+      toNum(b.value),
+      toNum(b.com1),
+      toNum(b.chunk2),
+      toNum(b.regDiff),
+      b.sourceFilename || null,
+      sourceFile,
+    ]
   );
   return r.rows[0];
 }
@@ -120,7 +137,7 @@ async function insertRecord(client, monthId, rec) {
 async function fetchMonthShaped(monthId) {
   const [monthR, brandsR, recordsR] = await Promise.all([
     pool.query('SELECT * FROM months WHERE id = $1', [monthId]),
-    pool.query('SELECT * FROM brands WHERE month_id = $1 ORDER BY id ASC', [monthId]),
+    pool.query(`SELECT ${BRAND_COLUMNS} FROM brands WHERE month_id = $1 ORDER BY id ASC`, [monthId]),
     pool.query('SELECT * FROM records WHERE month_id = $1 ORDER BY id ASC', [monthId]),
   ]);
   if (!monthR.rows.length) return null;
@@ -168,7 +185,7 @@ router.post('/', async (req, res, next) => {
 // this lets a dealership upload one brand file at a time, across separate
 // sessions, into the same billing round.
 router.patch('/:id/brands', async (req, res, next) => {
-  const { brand, units, value, com1, chunk2, regDiff, records } = req.body || {};
+  const { brand, units, value, com1, chunk2, regDiff, records, sourceFilename, sourceFileBase64 } = req.body || {};
   if (!brand) {
     return res.status(400).json({ error: 'brand is required' });
   }
@@ -186,7 +203,7 @@ router.patch('/:id/brands', async (req, res, next) => {
     await client.query('DELETE FROM records WHERE month_id = $1 AND brand = $2', [req.params.id, brand]);
     await client.query('DELETE FROM brands WHERE month_id = $1 AND brand = $2', [req.params.id, brand]);
 
-    await insertBrand(client, req.params.id, { brand, units, value, com1, chunk2, regDiff });
+    await insertBrand(client, req.params.id, { brand, units, value, com1, chunk2, regDiff, sourceFilename, sourceFileBase64 });
     for (const rec of records || []) {
       await insertRecord(client, req.params.id, { ...rec, brand });
     }
@@ -198,6 +215,27 @@ router.patch('/:id/brands', async (req, res, next) => {
     next(err);
   } finally {
     client.release();
+  }
+});
+
+router.get('/:id/brands/:brand/file', async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      'SELECT source_filename, source_file FROM brands WHERE month_id = $1 AND brand = $2',
+      [req.params.id, req.params.brand]
+    );
+    const row = result.rows[0];
+    if (!row || !row.source_file) {
+      return res.status(404).json({ error: 'ไม่พบไฟล์ต้นฉบับสำหรับแบรนด์นี้' });
+    }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(row.source_filename || 'source.xlsx')}"`
+    );
+    res.send(row.source_file);
+  } catch (err) {
+    next(err);
   }
 });
 

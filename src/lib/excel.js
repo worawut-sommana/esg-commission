@@ -84,56 +84,94 @@ function looksLikeDataRow(row, cols) {
   return false;
 }
 
+const TARGET_SHEET_NAME = 'เงินรางวัลเรียกเก็บ ESG';
+
+const BRAND_ALIASES = [
+  [/omoda|jaecoo/i, 'OJ'],
+  [/aion/i, 'AION'],
+  [/geely/i, 'GEELY'],
+  [/chery/i, 'CHERY'],
+  [/wuling/i, 'WULING'],
+  [/gwm|great\s*wall/i, 'GWM'],
+  [/\bmg\b/i, 'MG'],
+];
+
+function normalizeBrand(raw) {
+  if (!raw) return null;
+  for (const [re, code] of BRAND_ALIASES) {
+    if (re.test(raw)) return code;
+  }
+  return raw.trim().toUpperCase();
+}
+
+// The title row (above the header) reads like "...บริษัท ... (AION) วันที่ ...".
+// The brand code sits in the last parenthesized group, so we search the rows
+// above the header anchor for that pattern rather than the whole sheet, since
+// customer names further down can also contain "(...)" (e.g. "(Trade-in)").
+function detectBrand(rows, anchorRow) {
+  for (let i = 0; i < anchorRow; i++) {
+    const line = (rows[i] || []).map(cellText).join(' ');
+    if (!/หลักการจ่ายผลประโยชน์/.test(line)) continue;
+    const matches = [...line.matchAll(/\(([^)]+)\)/g)];
+    if (matches.length) return normalizeBrand(matches[matches.length - 1][1]);
+  }
+  return null;
+}
+
 export async function parseVehicleFile(arrayBuffer, fileName) {
   const XLSX = await import('xlsx');
   const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
 
-  let best = null;
-  for (const sheetName of wb.SheetNames) {
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: null, raw: true });
-    const anchorRow = findHeaderAnchor(rows);
-    if (anchorRow < 0) continue;
-    const cols = detectColumns(rows, anchorRow);
-    if (cols.vin == null && cols.name == null) continue;
-
-    let dataStart = -1;
-    for (let i = anchorRow + 1; i < Math.min(anchorRow + 8, rows.length); i++) {
-      if (looksLikeDataRow(rows[i] || [], cols)) {
-        dataStart = i;
-        break;
-      }
-    }
-    if (dataStart < 0) continue;
-
-    const records = [];
-    for (let i = dataStart; i < rows.length; i++) {
-      const row = rows[i] || [];
-      if (!looksLikeDataRow(row, cols)) break;
-      const price = cols.price != null ? num(row[cols.price]) : 0;
-      const com1 = cols.com1 != null ? num(row[cols.com1]) : Math.round(price * 0.01);
-      records.push({
-        name: cols.name != null ? cellText(row[cols.name]) : '',
-        model: cols.model != null ? cellText(row[cols.model]) : '',
-        vin: cols.vin != null ? cellText(row[cols.vin]) : '',
-        financier: cols.financier != null ? cellText(row[cols.financier]) : '',
-        deliveryDate: cols.deliveryDate != null ? cellText(row[cols.deliveryDate]) : '',
-        branch: cols.branch != null ? cellText(row[cols.branch]) : '',
-        price,
-        com: com1,
-        regDiff: cols.regDiff != null ? num(row[cols.regDiff]) : 0,
-      });
-    }
-
-    if (records.length && (!best || records.length > best.records.length)) {
-      best = { records, sheet: sheetName };
-    }
+  const sheet = wb.Sheets[TARGET_SHEET_NAME];
+  if (!sheet) {
+    throw new Error(`ไม่พบชีตชื่อ "${TARGET_SHEET_NAME}" ในไฟล์นี้ กรุณาตรวจสอบว่าเลือกไฟล์ถูกต้อง`);
   }
 
-  if (!best || !best.records.length) {
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+  const anchorRow = findHeaderAnchor(rows);
+  if (anchorRow < 0) {
+    throw new Error(`ไม่พบหัวตารางในชีต "${TARGET_SHEET_NAME}" กรุณาตรวจสอบว่ามีคอลัมน์ ลำดับ / ชื่อลูกค้า`);
+  }
+  const cols = detectColumns(rows, anchorRow);
+  if (cols.vin == null && cols.name == null) {
+    throw new Error(`ไม่พบคอลัมน์ ชื่อลูกค้า / เลขถัง ในชีต "${TARGET_SHEET_NAME}"`);
+  }
+
+  let dataStart = -1;
+  for (let i = anchorRow + 1; i < Math.min(anchorRow + 8, rows.length); i++) {
+    if (looksLikeDataRow(rows[i] || [], cols)) {
+      dataStart = i;
+      break;
+    }
+  }
+  if (dataStart < 0) {
+    throw new Error(`ไม่พบแถวข้อมูลรายคันในชีต "${TARGET_SHEET_NAME}"`);
+  }
+
+  const records = [];
+  for (let i = dataStart; i < rows.length; i++) {
+    const row = rows[i] || [];
+    if (!looksLikeDataRow(row, cols)) break;
+    const price = cols.price != null ? num(row[cols.price]) : 0;
+    const com1 = cols.com1 != null ? num(row[cols.com1]) : Math.round(price * 0.01);
+    records.push({
+      name: cols.name != null ? cellText(row[cols.name]) : '',
+      model: cols.model != null ? cellText(row[cols.model]) : '',
+      vin: cols.vin != null ? cellText(row[cols.vin]) : '',
+      financier: cols.financier != null ? cellText(row[cols.financier]) : '',
+      deliveryDate: cols.deliveryDate != null ? cellText(row[cols.deliveryDate]) : '',
+      branch: cols.branch != null ? cellText(row[cols.branch]) : '',
+      price,
+      com: com1,
+      regDiff: cols.regDiff != null ? num(row[cols.regDiff]) : 0,
+    });
+  }
+
+  if (!records.length) {
     throw new Error('ไม่พบตารางรายคันในไฟล์นี้ กรุณาตรวจสอบว่ามีคอลัมน์ ลำดับ / ชื่อลูกค้า / เลขถัง / ราคาขาย');
   }
 
-  const summary = best.records.reduce(
+  const summary = records.reduce(
     (acc, r) => {
       acc.units += 1;
       acc.value += r.price;
@@ -144,7 +182,13 @@ export async function parseVehicleFile(arrayBuffer, fileName) {
     { units: 0, value: 0, com1: 0, regDiff: 0 }
   );
 
-  return { file: fileName, sheet: best.sheet, records: best.records, summary };
+  return {
+    file: fileName,
+    sheet: TARGET_SHEET_NAME,
+    records,
+    summary,
+    detectedBrand: detectBrand(rows, anchorRow),
+  };
 }
 
 function readAsArrayBuffer(file) {
@@ -156,7 +200,18 @@ function readAsArrayBuffer(file) {
   });
 }
 
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
 export async function readVehicleExcelFile(file) {
   const arrayBuffer = await readAsArrayBuffer(file);
-  return parseVehicleFile(arrayBuffer, file.name);
+  const result = await parseVehicleFile(arrayBuffer, file.name);
+  return { ...result, sourceFileBase64: arrayBufferToBase64(arrayBuffer) };
 }
