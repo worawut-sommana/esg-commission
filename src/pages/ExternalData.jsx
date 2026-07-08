@@ -87,17 +87,19 @@ export default function ExternalData() {
 
   const filteredItems = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return items.filter((it) => {
-      if (brand && it.database_name !== brand) return false;
-      if (branch && it.branch !== branch) return false;
-      if (saleType && it.sale_type !== saleType) return false;
-      if (registration === 'paid' && !it.registration_paid) return false;
-      if (registration === 'unpaid' && it.registration_paid) return false;
-      if (!needle) return true;
-      return [it.customer_name, it.chassis_no, it.contno, it.model_code, it.resvno]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(needle));
-    });
+    return items
+      .filter((it) => {
+        if (brand && it.database_name !== brand) return false;
+        if (branch && it.branch !== branch) return false;
+        if (saleType && it.sale_type !== saleType) return false;
+        if (registration === 'paid' && !it.registration_paid) return false;
+        if (registration === 'unpaid' && it.registration_paid) return false;
+        if (!needle) return true;
+        return [it.customer_name, it.chassis_no, it.contno, it.model_code, it.resvno]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(needle));
+      })
+      .sort((a, b) => new Date(b.sdate || 0) - new Date(a.sdate || 0));
   }, [items, q, brand, branch, saleType, registration]);
 
   const onSave = async () => {
@@ -229,7 +231,7 @@ export default function ExternalData() {
                   พบ {fi(result.total)} รายการ · แสดง {fi(filteredItems.length)} รายการ
                 </div>
                 <div className="text-[12.5px] text-[#8a94a3] mt-1">
-                  {result.date_from} ถึง {result.date_to}
+                  {formatIsoDate(result.date_from)} ถึง {formatIsoDate(result.date_to)}
                   {result.date_defaulted ? ' (ใช้ช่วงวันที่ default)' : ''}
                 </div>
               </div>
