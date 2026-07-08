@@ -1,11 +1,55 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../context/DataContext';
 import { card, thL, thC, thR, thRhi, tdL, tdC, tdR, tdRhi, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
-import { f2, fi, PALETTE } from '../lib/format';
+import { f2, fi, formatIsoDate, PALETTE } from '../lib/format';
 import { readVehicleExcelFile } from '../lib/excel';
 import { matchExternalSalesByVin, fetchFinancierMapping } from '../lib/api';
 
 const BRAND_OPTIONS = Object.keys(PALETTE);
+
+// Excel dates in these files are either plain Buddhist-era text ("20/6/2569")
+// or already normalized to d/m/y by formatDeliveryDate — never Gregorian.
+// The external API's delivery_date is an ISO Gregorian timestamp, so compare
+// by day/month/year rather than string equality.
+function dateParts(value) {
+  if (!value) return null;
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(value).trim());
+  if (m) {
+    let [, d, mo, y] = m.map(Number);
+    if (y > 2400) y -= 543;
+    return { d, m: mo, y };
+  }
+  const dt = new Date(value);
+  if (isNaN(dt.getTime())) return null;
+  return { d: dt.getDate(), m: dt.getMonth() + 1, y: dt.getFullYear() };
+}
+
+function sameDate(a, b) {
+  const pa = dateParts(a);
+  const pb = dateParts(b);
+  if (!pa || !pb) return null;
+  return pa.d === pb.d && pa.m === pb.m && pa.y === pb.y;
+}
+
+function CompareCell({ value, ok, extValue, align = 'left' }) {
+  const cls =
+    ok === true
+      ? 'bg-[#ecfdf3] text-[#15803d]'
+      : ok === false
+        ? 'bg-[#fef2f2] text-[#b91c1c]'
+        : '';
+  return (
+    <td className={`p-3 text-[12.5px] ${align === 'right' ? 'text-right [font-variant-numeric:tabular-nums]' : 'text-left'} ${cls}`}>
+      <div className="font-semibold">
+        {ok === true ? '✓ ' : ok === false ? '✗ ' : ''}
+        {value}
+      </div>
+      {ok !== true && extValue != null && extValue !== '' && (
+        <div className="text-[10.5px] text-[#8a94a3] font-normal mt-[2px]">ขาย: {extValue}</div>
+      )}
+    </td>
+  );
+}
 
 export default function Upload({ setPage }) {
   const { months, addMonth, addBrandToMonth, deleteMonth } = useData();
@@ -103,40 +147,37 @@ export default function Upload({ setPage }) {
     return filePreview.records.map((r) => {
       const ext = r.vin ? matches[r.vin.trim().toUpperCase()] : null;
       if (!ext) {
-        return { ...r, verify: { status: 'notfound', notes: ['ไม่พบรายการนี้ในฐานข้อมูลการขาย'] } };
+        return { ...r, verify: { status: 'notfound', fields: {} } };
       }
 
-      const notes = [];
-      let mismatched = false;
-
-      const priceDiff = Math.round((r.price || 0) - Number(ext.sale_price || 0));
-      if (priceDiff !== 0) {
-        mismatched = true;
-        notes.push(`ราคาต่างกัน ${priceDiff > 0 ? '+' : ''}${f2(priceDiff)}`);
-      }
+      const fields = {};
 
       const mappedFinancier = financierMappings[ext.sale_condition];
-      if (mappedFinancier) {
-        if ((r.financier || '').trim().toUpperCase() !== mappedFinancier.trim().toUpperCase()) {
-          mismatched = true;
-          notes.push(`เงื่อนไขไม่ตรง (ไฟล์: ${r.financier || '-'} / ภายนอก: ${mappedFinancier})`);
-        }
-      } else if (ext.sale_condition) {
-        notes.push('ยังไม่ได้จับคู่เงื่อนไขนี้ (ไปที่หน้า "จับคู่เงื่อนไขการขาย")');
-      }
+      fields.financier = mappedFinancier
+        ? { ok: (r.financier || '').trim().toUpperCase() === mappedFinancier.trim().toUpperCase(), ext: mappedFinancier }
+        : { ok: null, ext: ext.sale_condition ? `${ext.sale_condition} (ยังไม่ได้จับคู่)` : null };
 
-      if (ext.registration_total_paid != null) {
-        const extReg = Number(ext.registration_total_paid);
-        const regDiffDelta = Math.round((r.regDiff || 0) - extReg);
-        if (Math.abs(regDiffDelta) > 1) {
-          mismatched = true;
-          notes.push(`ค่าทะเบียนต่างกัน (ไฟล์: ${f2(r.regDiff || 0)} / ภายนอก: ${f2(extReg)})`);
-        }
-      } else if (r.regDiff) {
-        notes.push(`ฐานข้อมูลการขายยังไม่มีข้อมูลค่าทะเบียนที่ชำระ (ไฟล์ระบุ ${f2(r.regDiff)})`);
-      }
+      fields.deliveryDate = { ok: sameDate(r.deliveryDate, ext.delivery_date), ext: formatIsoDate(ext.delivery_date) };
 
-      return { ...r, verify: { status: mismatched ? 'mismatch' : 'match', notes, ext } };
+      fields.msrp =
+        r.msrp != null
+          ? { ok: Math.round(r.msrp - Number(ext.msrp || 0)) === 0, ext: f2(ext.msrp) }
+          : { ok: null, ext: null };
+
+      fields.price = { ok: Math.round((r.price || 0) - Number(ext.sale_price || 0)) === 0, ext: f2(ext.sale_price) };
+
+      fields.wholesales =
+        r.wholesales != null
+          ? { ok: Math.round(r.wholesales - Number(ext.wholesales || 0)) === 0, ext: f2(ext.wholesales) }
+          : { ok: null, ext: null };
+
+      fields.regDiff =
+        ext.registration_total_paid != null
+          ? { ok: Math.round((r.regDiff || 0) - Number(ext.registration_total_paid)) === 0, ext: f2(ext.registration_total_paid) }
+          : { ok: null, ext: r.regDiff ? 'ยังไม่ชำระในฐานข้อมูลการขาย' : null };
+
+      const mismatched = Object.values(fields).some((f) => f.ok === false);
+      return { ...r, verify: { status: mismatched ? 'mismatch' : 'match', fields } };
     });
   }, [filePreview, matches, financierMappings]);
 
@@ -336,7 +377,7 @@ export default function Upload({ setPage }) {
           {showPreviewTable && (
             <div className="mb-5 border border-[#eef1f5] rounded-xl overflow-hidden">
               <div className="overflow-auto max-h-[420px]">
-                <table className="w-full border-collapse text-[12.5px] min-w-[1180px]">
+                <table className="w-full border-collapse text-[12.5px] min-w-[1560px]">
                   <thead className="sticky top-0">
                     <tr className="bg-[#f4f6fa]">
                       <th className={thC}>#</th>
@@ -346,61 +387,79 @@ export default function Upload({ setPage }) {
                       <th className={thL}>สาขา</th>
                       <th className={thL}>เงื่อนไข</th>
                       <th className={thL}>วันที่ส่งมอบ</th>
+                      <th className={thR}>MSRP</th>
                       <th className={thR}>ราคาขาย</th>
+                      <th className={thR}>Wholesales</th>
+                      <th className={thR}>หัก ค่าจดทะเบียน</th>
                       <th className={thRhi}>ค่าคอม 1%</th>
-                      <th className={thL}>ตรวจสอบกับฐานข้อมูลการขาย</th>
+                      <th className={thC}>สถานะ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {verifiedRecords.map((r, i) => (
-                      <tr key={r.vin || i} className="border-b border-[#eef1f5] bg-white">
-                        <td className={tdC}>{i + 1}</td>
-                        <td className={tdL}>{r.name}</td>
-                        <td className={tdL}>
-                          <span className="inline-block px-[9px] py-[3px] bg-[#eef2fb] text-[var(--ac)] rounded-full text-[11.5px] font-semibold">
-                            {r.model}
-                          </span>
-                        </td>
-                        <td className={tdMono}>{r.vin}</td>
-                        <td className={tdL}>{r.branch || '-'}</td>
-                        <td className={tdL}>{r.financier || '-'}</td>
-                        <td className={tdL}>{r.deliveryDate || '-'}</td>
-                        <td className={tdR}>{f2(r.price)}</td>
-                        <td className={tdRhi}>{f2(r.com)}</td>
-                        <td className={tdL}>
-                          {verifyStatus === 'loading' ? (
-                            <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
-                              กำลังตรวจสอบ...
+                    {verifiedRecords.map((r, i) => {
+                      const loading = verifyStatus === 'loading';
+                      const f = r.verify.fields || {};
+                      return (
+                        <tr key={r.vin || i} className="border-b border-[#eef1f5] bg-white">
+                          <td className={tdC}>{i + 1}</td>
+                          <td className={tdL}>{r.name}</td>
+                          <td className={tdL}>
+                            <span className="inline-block px-[9px] py-[3px] bg-[#eef2fb] text-[var(--ac)] rounded-full text-[11.5px] font-semibold">
+                              {r.model}
                             </span>
-                          ) : (
-                            <>
-                              {r.verify.status === 'match' && (
-                                <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
-                                  ตรงกัน
-                                </span>
-                              )}
-                              {r.verify.status === 'mismatch' && (
-                                <span className="inline-block px-[9px] py-[3px] bg-[#fef2f2] text-[#b91c1c] rounded-full text-[11.5px] font-semibold">
-                                  ไม่ตรงกัน
-                                </span>
-                              )}
-                              {r.verify.status === 'notfound' && (
-                                <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
-                                  ไม่พบข้อมูล
-                                </span>
-                              )}
-                              {r.verify.notes.length > 0 && (
-                                <div className="mt-1 text-[11px] text-[#8a94a3] leading-[1.5]">
-                                  {r.verify.notes.map((n, ni) => (
-                                    <div key={ni}>{n}</div>
-                                  ))}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className={tdMono}>{r.vin}</td>
+                          <td className={tdL}>{r.branch || '-'}</td>
+                          <CompareCell value={r.financier || '-'} ok={loading ? null : f.financier?.ok} extValue={f.financier?.ext} />
+                          <CompareCell value={r.deliveryDate || '-'} ok={loading ? null : f.deliveryDate?.ok} extValue={f.deliveryDate?.ext} />
+                          <CompareCell
+                            value={r.msrp != null ? f2(r.msrp) : '-'}
+                            ok={loading ? null : f.msrp?.ok}
+                            extValue={f.msrp?.ext}
+                            align="right"
+                          />
+                          <CompareCell value={f2(r.price)} ok={loading ? null : f.price?.ok} extValue={f.price?.ext} align="right" />
+                          <CompareCell
+                            value={r.wholesales != null ? f2(r.wholesales) : '-'}
+                            ok={loading ? null : f.wholesales?.ok}
+                            extValue={f.wholesales?.ext}
+                            align="right"
+                          />
+                          <CompareCell
+                            value={f2(r.regDiff)}
+                            ok={loading ? null : f.regDiff?.ok}
+                            extValue={f.regDiff?.ext}
+                            align="right"
+                          />
+                          <td className={tdRhi}>{f2(r.com)}</td>
+                          <td className={tdC}>
+                            {loading ? (
+                              <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+                                กำลังตรวจสอบ...
+                              </span>
+                            ) : (
+                              <>
+                                {r.verify.status === 'match' && (
+                                  <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
+                                    ตรงกัน
+                                  </span>
+                                )}
+                                {r.verify.status === 'mismatch' && (
+                                  <span className="inline-block px-[9px] py-[3px] bg-[#fef2f2] text-[#b91c1c] rounded-full text-[11.5px] font-semibold">
+                                    ไม่ตรงกัน
+                                  </span>
+                                )}
+                                {r.verify.status === 'notfound' && (
+                                  <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+                                    ไม่พบข้อมูล
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

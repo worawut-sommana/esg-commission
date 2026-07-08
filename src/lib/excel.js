@@ -75,6 +75,8 @@ function detectColumns(rows, anchorRow) {
   const cols = {};
   cols.vin = pick((h) => /เลขถัง|^vin/i.test(h));
   cols.price = pick((h) => /ราคาขาย/.test(h));
+  cols.msrp = pick((h) => /msrp/i.test(h));
+  cols.wholesales = pick((h) => /wholesale/i.test(h));
   cols.com1 = pick((h) => /1%/.test(h) && /esg|คอม/i.test(h));
   cols.regDiff = pick((h) => /หัก/.test(h) && /ทะเบียน/.test(h) && !/ใบเสร็จ/.test(h));
   cols.rank = pick((h) => h === 'ลำดับ');
@@ -176,6 +178,8 @@ export async function parseVehicleFile(arrayBuffer, fileName) {
       price,
       com: com1,
       regDiff: cols.regDiff != null ? num(row[cols.regDiff]) : 0,
+      msrp: cols.msrp != null ? num(row[cols.msrp]) : null,
+      wholesales: cols.wholesales != null ? num(row[cols.wholesales]) : null,
     });
   }
 
