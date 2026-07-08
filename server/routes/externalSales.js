@@ -37,4 +37,29 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+router.post('/match', async (req, res, next) => {
+  const { vins } = req.body || {};
+  if (!Array.isArray(vins) || !vins.length) {
+    return res.json({ matches: {} });
+  }
+  try {
+    const cleaned = [...new Set(vins.map((v) => String(v || '').trim().toUpperCase()).filter(Boolean))];
+    if (!cleaned.length) return res.json({ matches: {} });
+
+    const r = await pool.query(
+      `SELECT chassis_no, contno, sale_condition, sale_price, msrp, wholesales, brand, branch,
+              delivery_date, sdate, registration_paid, registration_total_paid
+       FROM external_sales
+       WHERE upper(chassis_no) = ANY($1::text[])`,
+      [cleaned]
+    );
+
+    const matches = {};
+    for (const row of r.rows) matches[row.chassis_no.trim().toUpperCase()] = row;
+    res.json({ matches });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

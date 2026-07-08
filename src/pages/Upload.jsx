@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useData } from '../context/DataContext';
 import { card, thL, thC, thR, thRhi, tdL, tdC, tdR, tdRhi, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, PALETTE } from '../lib/format';
 import { readVehicleExcelFile } from '../lib/excel';
+import { matchExternalSalesByVin, fetchFinancierMapping } from '../lib/api';
 
 const BRAND_OPTIONS = Object.keys(PALETTE);
 
@@ -27,6 +28,31 @@ export default function Upload({ setPage }) {
   const [deletingId, setDeletingId] = useState(null);
   const [showPreviewTable, setShowPreviewTable] = useState(true);
 
+  const [verifyStatus, setVerifyStatus] = useState('idle'); // 'idle' | 'loading' | 'ready' | 'error'
+  const [matches, setMatches] = useState({});
+  const [financierMappings, setFinancierMappings] = useState({});
+
+  const verifyAgainstDatabase = async (records) => {
+    const vins = records.map((r) => r.vin).filter(Boolean);
+    if (!vins.length) {
+      setMatches({});
+      setFinancierMappings({});
+      setVerifyStatus('idle');
+      return;
+    }
+    setVerifyStatus('loading');
+    try {
+      const [matchRes, mappingRes] = await Promise.all([matchExternalSalesByVin(vins), fetchFinancierMapping()]);
+      setMatches(matchRes.matches || {});
+      setFinancierMappings(mappingRes.mappings || {});
+      setVerifyStatus('ready');
+    } catch {
+      setMatches({});
+      setFinancierMappings({});
+      setVerifyStatus('error');
+    }
+  };
+
   const handleFile = async (file) => {
     if (!file) return;
     try {
@@ -47,6 +73,7 @@ export default function Upload({ setPage }) {
       setTargetMode('new');
       setTargetMonthId(months.length ? months[months.length - 1].id : '');
       setShowPreviewTable(true);
+      verifyAgainstDatabase(result.records);
     } catch (err) {
       setFilePreview(null);
       setError(err.message || 'อ่านไฟล์ไม่สำเร็จ');
@@ -70,6 +97,60 @@ export default function Upload({ setPage }) {
     setFilePreview(null);
     setError('');
   };
+
+  const verifiedRecords = useMemo(() => {
+    if (!filePreview) return [];
+    return filePreview.records.map((r) => {
+      const ext = r.vin ? matches[r.vin.trim().toUpperCase()] : null;
+      if (!ext) {
+        return { ...r, verify: { status: 'notfound', notes: ['ไม่พบรายการนี้ในฐานข้อมูลภายนอก'] } };
+      }
+
+      const notes = [];
+      let mismatched = false;
+
+      const priceDiff = Math.round((r.price || 0) - Number(ext.sale_price || 0));
+      if (priceDiff !== 0) {
+        mismatched = true;
+        notes.push(`ราคาต่างกัน ${priceDiff > 0 ? '+' : ''}${f2(priceDiff)}`);
+      }
+
+      const mappedFinancier = financierMappings[ext.sale_condition];
+      if (mappedFinancier) {
+        if ((r.financier || '').trim().toUpperCase() !== mappedFinancier.trim().toUpperCase()) {
+          mismatched = true;
+          notes.push(`เงื่อนไขไม่ตรง (ไฟล์: ${r.financier || '-'} / ภายนอก: ${mappedFinancier})`);
+        }
+      } else if (ext.sale_condition) {
+        notes.push('ยังไม่ได้จับคู่เงื่อนไขนี้ (ไปที่หน้า "จับคู่เงื่อนไขการขาย")');
+      }
+
+      if (ext.registration_total_paid != null) {
+        const extReg = Number(ext.registration_total_paid);
+        const regDiffDelta = Math.round((r.regDiff || 0) - extReg);
+        if (Math.abs(regDiffDelta) > 1) {
+          mismatched = true;
+          notes.push(`ค่าทะเบียนต่างกัน (ไฟล์: ${f2(r.regDiff || 0)} / ภายนอก: ${f2(extReg)})`);
+        }
+      } else if (r.regDiff) {
+        notes.push(`ภายนอกยังไม่มีข้อมูลค่าทะเบียนที่ชำระ (ไฟล์ระบุ ${f2(r.regDiff)})`);
+      }
+
+      return { ...r, verify: { status: mismatched ? 'mismatch' : 'match', notes, ext } };
+    });
+  }, [filePreview, matches, financierMappings]);
+
+  const verifySummary = useMemo(
+    () =>
+      verifiedRecords.reduce(
+        (acc, r) => {
+          acc[r.verify.status] = (acc[r.verify.status] || 0) + 1;
+          return acc;
+        },
+        { match: 0, mismatch: 0, notfound: 0 }
+      ),
+    [verifiedRecords]
+  );
 
   const onAddBrand = async () => {
     if (!filePreview) return;
@@ -239,24 +320,39 @@ export default function Upload({ setPage }) {
             </div>
           </div>
 
+          <div className="mb-[18px] px-4 py-3 bg-[#f4f6fa] rounded-xl text-[13px]">
+            {verifyStatus === 'loading' && <span className="text-[#6b7686]">กำลังตรวจสอบข้อมูลกับฐานข้อมูลภายนอก...</span>}
+            {verifyStatus === 'error' && <span className="text-[#b91c1c]">ตรวจสอบกับฐานข้อมูลภายนอกไม่สำเร็จ</span>}
+            {verifyStatus === 'ready' && (
+              <span className="font-semibold">
+                ผลตรวจสอบกับฐานข้อมูลภายนอก:{' '}
+                <span className="text-[#15803d]">ตรงกัน {fi(verifySummary.match)}</span> ·{' '}
+                <span className="text-[#b91c1c]">ไม่ตรงกัน {fi(verifySummary.mismatch)}</span> ·{' '}
+                <span className="text-[#8a94a3]">ไม่พบข้อมูล {fi(verifySummary.notfound)}</span>
+              </span>
+            )}
+          </div>
+
           {showPreviewTable && (
             <div className="mb-5 border border-[#eef1f5] rounded-xl overflow-hidden">
-              <div className="overflow-auto max-h-[360px]">
-                <table className="w-full border-collapse text-[12.5px] min-w-[820px]">
+              <div className="overflow-auto max-h-[420px]">
+                <table className="w-full border-collapse text-[12.5px] min-w-[1180px]">
                   <thead className="sticky top-0">
                     <tr className="bg-[#f4f6fa]">
                       <th className={thC}>#</th>
                       <th className={thL}>ชื่อลูกค้า</th>
                       <th className={thL}>รุ่นรถ</th>
                       <th className={thL}>เลข VIN</th>
+                      <th className={thL}>สาขา</th>
                       <th className={thL}>เงื่อนไข</th>
                       <th className={thL}>วันที่ส่งมอบ</th>
                       <th className={thR}>ราคาขาย</th>
                       <th className={thRhi}>ค่าคอม 1%</th>
+                      <th className={thL}>ตรวจสอบกับฐานข้อมูลภายนอก</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filePreview.records.map((r, i) => (
+                    {verifiedRecords.map((r, i) => (
                       <tr key={r.vin || i} className="border-b border-[#eef1f5] bg-white">
                         <td className={tdC}>{i + 1}</td>
                         <td className={tdL}>{r.name}</td>
@@ -266,10 +362,43 @@ export default function Upload({ setPage }) {
                           </span>
                         </td>
                         <td className={tdMono}>{r.vin}</td>
+                        <td className={tdL}>{r.branch || '-'}</td>
                         <td className={tdL}>{r.financier || '-'}</td>
                         <td className={tdL}>{r.deliveryDate || '-'}</td>
                         <td className={tdR}>{f2(r.price)}</td>
                         <td className={tdRhi}>{f2(r.com)}</td>
+                        <td className={tdL}>
+                          {verifyStatus === 'loading' ? (
+                            <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+                              กำลังตรวจสอบ...
+                            </span>
+                          ) : (
+                            <>
+                              {r.verify.status === 'match' && (
+                                <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
+                                  ตรงกัน
+                                </span>
+                              )}
+                              {r.verify.status === 'mismatch' && (
+                                <span className="inline-block px-[9px] py-[3px] bg-[#fef2f2] text-[#b91c1c] rounded-full text-[11.5px] font-semibold">
+                                  ไม่ตรงกัน
+                                </span>
+                              )}
+                              {r.verify.status === 'notfound' && (
+                                <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+                                  ไม่พบข้อมูล
+                                </span>
+                              )}
+                              {r.verify.notes.length > 0 && (
+                                <div className="mt-1 text-[11px] text-[#8a94a3] leading-[1.5]">
+                                  {r.verify.notes.map((n, ni) => (
+                                    <div key={ni}>{n}</div>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -67,6 +67,14 @@ export function fetchSavedExternalSales(params) {
   return fetch(`/api/external-sales?${qs}`).then(handle);
 }
 
+export function matchExternalSalesByVin(vins) {
+  return fetch('/api/external-sales/match', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vins }),
+  }).then(handle);
+}
+
 export function fetchFinancierMapping() {
   return fetch('/api/financier-mapping').then(handle);
 }
