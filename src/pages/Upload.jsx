@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../context/DataContext';
-import { card, thL, thC, thR, thRhi, tdL, tdC, tdR, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
+import { card, thL, thC, thR, thRhi, tdL, tdC, tdR, tdRhi, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, formatIsoDate, PALETTE } from '../lib/format';
 import { readVehicleExcelFile } from '../lib/excel';
 import { matchExternalSalesByVin, fetchFinancierMapping } from '../lib/api';
@@ -177,9 +177,6 @@ export default function Upload({ setPage }) {
         ext.registration_total_paid != null
           ? { ok: Math.round((r.regDiff || 0) - Number(ext.registration_total_paid)) === 0, ext: f2(ext.registration_total_paid) }
           : { ok: null, ext: r.regDiff ? 'ยังไม่ชำระในฐานข้อมูลการขาย' : null };
-
-      const expectedCom = Math.round(Number(ext.sale_price || 0) * 0.01);
-      fields.com = { ok: Math.round((r.com || 0) - expectedCom) === 0, ext: f2(expectedCom) };
 
       const values = Object.values(fields);
       const mismatched = values.some((f) => f.ok === false);
@@ -440,7 +437,7 @@ export default function Upload({ setPage }) {
                             extValue={f.regDiff?.ext}
                             align="right"
                           />
-                          <CompareCell value={f2(r.com)} ok={loading ? null : f.com?.ok} extValue={f.com?.ext} align="right" />
+                          <td className={tdRhi}>{f2(r.com)}</td>
                           <td className={tdC}>
                             {loading ? (
                               <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
