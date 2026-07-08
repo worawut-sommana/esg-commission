@@ -32,21 +32,23 @@ function sameDate(a, b) {
 }
 
 function CompareCell({ value, ok, extValue, align = 'left' }) {
+  const hasNote = ok !== true && extValue != null && extValue !== '';
   const cls =
     ok === true
       ? 'bg-[#ecfdf3] text-[#15803d]'
       : ok === false
         ? 'bg-[#fef2f2] text-[#b91c1c]'
-        : '';
+        : hasNote
+          ? 'bg-[#fffbeb] text-[#92400e]'
+          : '';
+  const icon = ok === true ? '✓ ' : ok === false ? '✗ ' : hasNote ? '? ' : '';
   return (
     <td className={`p-3 text-[12.5px] ${align === 'right' ? 'text-right [font-variant-numeric:tabular-nums]' : 'text-left'} ${cls}`}>
       <div className="font-semibold">
-        {ok === true ? '✓ ' : ok === false ? '✗ ' : ''}
+        {icon}
         {value}
       </div>
-      {ok !== true && extValue != null && extValue !== '' && (
-        <div className="text-[10.5px] text-[#8a94a3] font-normal mt-[2px]">ขาย: {extValue}</div>
-      )}
+      {hasNote && <div className="text-[10.5px] font-normal mt-[2px] opacity-80">ขาย: {extValue}</div>}
     </td>
   );
 }
