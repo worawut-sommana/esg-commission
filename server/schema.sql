@@ -42,3 +42,13 @@ CREATE TABLE IF NOT EXISTS records (
 
 CREATE INDEX IF NOT EXISTS idx_brands_month ON brands(month_id);
 CREATE INDEX IF NOT EXISTS idx_records_month ON records(month_id);
+
+-- Single-row table holding the external eaksahalink API connection details.
+-- The api_key is never sent back to the browser after it's saved.
+CREATE TABLE IF NOT EXISTS integration_settings (
+  id INT PRIMARY KEY DEFAULT 1,
+  api_url TEXT NOT NULL DEFAULT '',
+  api_key TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT integration_settings_single_row CHECK (id = 1)
+);

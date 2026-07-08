@@ -30,6 +30,13 @@ export function fi(n) {
   return (Number(n) || 0).toLocaleString('en-US');
 }
 
+export function formatIsoDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear() + 543}`;
+}
+
 export function shortMil(n) {
   n = Number(n) || 0;
   if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + 'พันล.';

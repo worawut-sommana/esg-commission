@@ -36,3 +36,20 @@ export function addBrandToMonthApi(monthId, brandEntry) {
     body: JSON.stringify(brandEntry),
   }).then(handle);
 }
+
+export function fetchIntegrationSettings() {
+  return fetch('/api/integration/settings').then(handle);
+}
+
+export function saveIntegrationSettings(settings) {
+  return fetch('/api/integration/settings', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  }).then(handle);
+}
+
+export function fetchExternalSalesData(params) {
+  const qs = new URLSearchParams(params).toString();
+  return fetch(`/api/integration/data?${qs}`).then(handle);
+}

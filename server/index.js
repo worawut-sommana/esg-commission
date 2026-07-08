@@ -3,6 +3,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import monthsRouter from './routes/months.js';
+import integrationRouter from './routes/integration.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -11,6 +12,7 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/months', monthsRouter);
+app.use('/api/integration', integrationRouter);
 
 app.use(express.static(distDir));
 app.get(/^(?!\/api).*/, (req, res) => {
