@@ -62,6 +62,11 @@ export function saveExternalSalesData(items) {
   }).then(handle);
 }
 
+export function fetchSavedExternalSales(params) {
+  const qs = new URLSearchParams(params).toString();
+  return fetch(`/api/external-sales?${qs}`).then(handle);
+}
+
 export function fetchFinancierMapping() {
   return fetch('/api/financier-mapping').then(handle);
 }

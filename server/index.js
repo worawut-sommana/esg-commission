@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import monthsRouter from './routes/months.js';
 import integrationRouter from './routes/integration.js';
 import financierMappingRouter from './routes/financierMapping.js';
+import externalSalesRouter from './routes/externalSales.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -15,6 +16,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api/months', monthsRouter);
 app.use('/api/integration', integrationRouter);
 app.use('/api/financier-mapping', financierMappingRouter);
+app.use('/api/external-sales', externalSalesRouter);
 
 app.use(express.static(distDir));
 app.get(/^(?!\/api).*/, (req, res) => {

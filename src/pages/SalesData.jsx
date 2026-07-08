@@ -1,0 +1,246 @@
+import { useEffect, useMemo, useState } from 'react';
+import { card, thL, thC, thR, tdL, tdC, tdR, tdMono, btnPrimary, selectStyle } from '../lib/styles';
+import { f2, fi, formatIsoDate } from '../lib/format';
+import { fetchSavedExternalSales } from '../lib/api';
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function daysAgoIso(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+export default function SalesData() {
+  const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
+  const [dateTo, setDateTo] = useState(todayIso());
+  const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
+  const [error, setError] = useState('');
+  const [items, setItems] = useState([]);
+
+  const [q, setQ] = useState('');
+  const [brand, setBrand] = useState('');
+  const [branch, setBranch] = useState('');
+  const [saleType, setSaleType] = useState('');
+  const [registration, setRegistration] = useState('');
+
+  const load = async () => {
+    setStatus('loading');
+    setError('');
+    try {
+      const data = await fetchSavedExternalSales({ date_from: dateFrom, date_to: dateTo });
+      setItems(data.items || []);
+      setStatus('ready');
+    } catch (err) {
+      setError(err.message || 'โหลดข้อมูลไม่สำเร็จ');
+      setStatus('error');
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const brandOptions = useMemo(() => uniqueSorted(items.map((it) => it.brand)), [items]);
+  const branchOptions = useMemo(() => uniqueSorted(items.map((it) => it.branch)), [items]);
+  const saleTypeOptions = useMemo(() => uniqueSorted(items.map((it) => it.sale_type)), [items]);
+
+  const filteredItems = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return items
+      .filter((it) => {
+        if (brand && it.brand !== brand) return false;
+        if (branch && it.branch !== branch) return false;
+        if (saleType && it.sale_type !== saleType) return false;
+        if (registration === 'paid' && !it.registration_paid) return false;
+        if (registration === 'unpaid' && it.registration_paid) return false;
+        if (!needle) return true;
+        return [it.customer_name, it.chassis_no, it.contno, it.model_code, it.resvno]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(needle));
+      })
+      .sort((a, b) => new Date(b.sdate || 0) - new Date(a.sdate || 0));
+  }, [items, q, brand, branch, saleType, registration]);
+
+  return (
+    <section className="appfade">
+      <div className="mb-[22px]">
+        <div className="text-xs font-semibold tracking-[0.06em] uppercase text-[var(--ac)] mb-[6px]">ข้อมูลภายนอก</div>
+        <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">ข้อมูลการขาย</h1>
+        <div className="text-[#6b7686] text-[13.5px] mt-[6px]">
+          ข้อมูลยอดขายจากระบบ eaksahalink ที่บันทึกลงฐานข้อมูลไว้แล้ว
+        </div>
+      </div>
+
+      <div className={card + ' mb-5'}>
+        <div className="flex gap-3 flex-wrap items-end">
+          <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+            วันที่เริ่ม
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+            />
+          </label>
+          <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+            วันที่สิ้นสุด
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+            />
+          </label>
+          <button onClick={load} disabled={status === 'loading'} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+            {status === 'loading' ? 'กำลังโหลด...' : 'ค้นหา'}
+          </button>
+        </div>
+      </div>
+
+      {status === 'error' && (
+        <div className="mb-5 px-4 py-[14px] bg-[#fef2f2] border border-[#fecaca] rounded-xl text-[#b91c1c] text-[13.5px]">{error}</div>
+      )}
+
+      {status !== 'loading' && !error && (
+        <>
+          <div className={card + ' mb-5'}>
+            <div className="flex gap-3 flex-wrap items-end">
+              <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold flex-1 min-w-[220px]">
+                ค้นหา
+                <input
+                  type="text"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="ชื่อลูกค้า / เลขถัง / เลขที่สัญญา / รุ่นรถ"
+                  className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+                />
+              </label>
+              <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+                แบรนด์
+                <select value={brand} onChange={(e) => setBrand(e.target.value)} className={selectStyle + ' min-w-[150px]!'}>
+                  <option value="">ทั้งหมด</option>
+                  {brandOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+                สาขา
+                <select value={branch} onChange={(e) => setBranch(e.target.value)} className={selectStyle + ' min-w-[120px]!'}>
+                  <option value="">ทั้งหมด</option>
+                  {branchOptions.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+                ประเภทการขาย
+                <select value={saleType} onChange={(e) => setSaleType(e.target.value)} className={selectStyle + ' min-w-[140px]!'}>
+                  <option value="">ทั้งหมด</option>
+                  {saleTypeOptions.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+                ทะเบียน
+                <select value={registration} onChange={(e) => setRegistration(e.target.value)} className={selectStyle + ' min-w-[140px]!'}>
+                  <option value="">ทั้งหมด</option>
+                  <option value="paid">ชำระแล้ว</option>
+                  <option value="unpaid">ยังไม่ชำระ</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div className={card}>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-[18px]">
+              <div>
+                <div className="font-bold text-[15px]">
+                  พบ {fi(items.length)} รายการ · แสดง {fi(filteredItems.length)} รายการ
+                </div>
+                <div className="text-[12.5px] text-[#8a94a3] mt-1">
+                  {formatIsoDate(dateFrom)} ถึง {formatIsoDate(dateTo)}
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[13px] min-w-[1700px]">
+                <thead>
+                  <tr className="bg-[#f4f6fa]">
+                    <th className={thC}>#</th>
+                    <th className={thL}>แบรนด์</th>
+                    <th className={thL}>สาขา</th>
+                    <th className={thL}>เลขที่สัญญา</th>
+                    <th className={thL}>ชื่อลูกค้า</th>
+                    <th className={thL}>รุ่นรถ</th>
+                    <th className={thL}>เลขถัง</th>
+                    <th className={thL}>เงื่อนไขการขาย</th>
+                    <th className={thL}>วันที่ขาย</th>
+                    <th className={thL}>วันที่ส่งมอบ</th>
+                    <th className={thR}>ราคาขาย</th>
+                    <th className={thR}>ราคาส่ง</th>
+                    <th className={thR}>MSRP</th>
+                    <th className={thR}>ค่าทะเบียน</th>
+                    <th className={thC}>สถานะทะเบียน</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map((it, i) => (
+                    <tr key={`${it.contno || it.chassis_no || 'row'}-${i}`} className="border-b border-[#eef1f5]">
+                      <td className={tdC}>{i + 1}</td>
+                      <td className={tdL}>{it.brand}</td>
+                      <td className={tdL}>{it.branch}</td>
+                      <td className={tdMono}>{it.contno}</td>
+                      <td className={tdL}>{it.customer_name}</td>
+                      <td className={tdL}>
+                        <span className="inline-block px-[9px] py-[3px] bg-[#eef2fb] text-[var(--ac)] rounded-full text-[11.5px] font-semibold">
+                          {it.model_code}
+                        </span>
+                      </td>
+                      <td className={tdMono}>{it.chassis_no}</td>
+                      <td className={tdL}>{it.sale_condition}</td>
+                      <td className={tdL}>{formatIsoDate(it.sdate)}</td>
+                      <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
+                      <td className={tdR}>{f2(it.sale_price)}</td>
+                      <td className={tdR}>{f2(it.wholesales)}</td>
+                      <td className={tdR}>{f2(it.msrp)}</td>
+                      <td className={tdR}>{it.registration_total_paid != null ? f2(it.registration_total_paid) : '-'}</td>
+                      <td className={tdC}>
+                        {it.registration_paid ? (
+                          <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
+                            ชำระแล้ว
+                          </span>
+                        ) : (
+                          <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+                            ยังไม่ชำระ
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!filteredItems.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
