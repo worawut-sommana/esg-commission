@@ -103,7 +103,7 @@ export default function Upload({ setPage }) {
     return filePreview.records.map((r) => {
       const ext = r.vin ? matches[r.vin.trim().toUpperCase()] : null;
       if (!ext) {
-        return { ...r, verify: { status: 'notfound', notes: ['ไม่พบรายการนี้ในฐานข้อมูลภายนอก'] } };
+        return { ...r, verify: { status: 'notfound', notes: ['ไม่พบรายการนี้ในฐานข้อมูลการขาย'] } };
       }
 
       const notes = [];
@@ -133,7 +133,7 @@ export default function Upload({ setPage }) {
           notes.push(`ค่าทะเบียนต่างกัน (ไฟล์: ${f2(r.regDiff || 0)} / ภายนอก: ${f2(extReg)})`);
         }
       } else if (r.regDiff) {
-        notes.push(`ภายนอกยังไม่มีข้อมูลค่าทะเบียนที่ชำระ (ไฟล์ระบุ ${f2(r.regDiff)})`);
+        notes.push(`ฐานข้อมูลการขายยังไม่มีข้อมูลค่าทะเบียนที่ชำระ (ไฟล์ระบุ ${f2(r.regDiff)})`);
       }
 
       return { ...r, verify: { status: mismatched ? 'mismatch' : 'match', notes, ext } };
@@ -321,11 +321,11 @@ export default function Upload({ setPage }) {
           </div>
 
           <div className="mb-[18px] px-4 py-3 bg-[#f4f6fa] rounded-xl text-[13px]">
-            {verifyStatus === 'loading' && <span className="text-[#6b7686]">กำลังตรวจสอบข้อมูลกับฐานข้อมูลภายนอก...</span>}
-            {verifyStatus === 'error' && <span className="text-[#b91c1c]">ตรวจสอบกับฐานข้อมูลภายนอกไม่สำเร็จ</span>}
+            {verifyStatus === 'loading' && <span className="text-[#6b7686]">กำลังตรวจสอบข้อมูลกับฐานข้อมูลการขาย...</span>}
+            {verifyStatus === 'error' && <span className="text-[#b91c1c]">ตรวจสอบกับฐานข้อมูลการขายไม่สำเร็จ</span>}
             {verifyStatus === 'ready' && (
               <span className="font-semibold">
-                ผลตรวจสอบกับฐานข้อมูลภายนอก:{' '}
+                ผลตรวจสอบกับฐานข้อมูลการขาย:{' '}
                 <span className="text-[#15803d]">ตรงกัน {fi(verifySummary.match)}</span> ·{' '}
                 <span className="text-[#b91c1c]">ไม่ตรงกัน {fi(verifySummary.mismatch)}</span> ·{' '}
                 <span className="text-[#8a94a3]">ไม่พบข้อมูล {fi(verifySummary.notfound)}</span>
@@ -348,7 +348,7 @@ export default function Upload({ setPage }) {
                       <th className={thL}>วันที่ส่งมอบ</th>
                       <th className={thR}>ราคาขาย</th>
                       <th className={thRhi}>ค่าคอม 1%</th>
-                      <th className={thL}>ตรวจสอบกับฐานข้อมูลภายนอก</th>
+                      <th className={thL}>ตรวจสอบกับฐานข้อมูลการขาย</th>
                     </tr>
                   </thead>
                   <tbody>
