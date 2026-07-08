@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useData } from '../context/DataContext';
-import { card, thL, thC, thR, thRhi, tdL, tdC, tdR, tdRhi, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
+import { card, thL, thC, thR, thRhi, tdL, tdC, tdR, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, formatIsoDate, PALETTE } from '../lib/format';
 import { readVehicleExcelFile } from '../lib/excel';
 import { matchExternalSalesByVin, fetchFinancierMapping } from '../lib/api';
@@ -178,8 +178,14 @@ export default function Upload({ setPage }) {
           ? { ok: Math.round((r.regDiff || 0) - Number(ext.registration_total_paid)) === 0, ext: f2(ext.registration_total_paid) }
           : { ok: null, ext: r.regDiff ? 'ยังไม่ชำระในฐานข้อมูลการขาย' : null };
 
-      const mismatched = Object.values(fields).some((f) => f.ok === false);
-      return { ...r, verify: { status: mismatched ? 'mismatch' : 'match', fields } };
+      const expectedCom = Math.round(Number(ext.sale_price || 0) * 0.01);
+      fields.com = { ok: Math.round((r.com || 0) - expectedCom) === 0, ext: f2(expectedCom) };
+
+      const values = Object.values(fields);
+      const mismatched = values.some((f) => f.ok === false);
+      const unverified = !mismatched && values.some((f) => f.ok === null && f.ext != null && f.ext !== '');
+      const status = mismatched ? 'mismatch' : unverified ? 'unverified' : 'match';
+      return { ...r, verify: { status, fields } };
     });
   }, [filePreview, matches, financierMappings]);
 
@@ -190,7 +196,7 @@ export default function Upload({ setPage }) {
           acc[r.verify.status] = (acc[r.verify.status] || 0) + 1;
           return acc;
         },
-        { match: 0, mismatch: 0, notfound: 0 }
+        { match: 0, mismatch: 0, unverified: 0, notfound: 0 }
       ),
     [verifiedRecords]
   );
@@ -371,6 +377,7 @@ export default function Upload({ setPage }) {
                 ผลตรวจสอบกับฐานข้อมูลการขาย:{' '}
                 <span className="text-[#15803d]">ตรงกัน {fi(verifySummary.match)}</span> ·{' '}
                 <span className="text-[#b91c1c]">ไม่ตรงกัน {fi(verifySummary.mismatch)}</span> ·{' '}
+                <span className="text-[#92400e]">ยังไม่ยืนยัน {fi(verifySummary.unverified)}</span> ·{' '}
                 <span className="text-[#8a94a3]">ไม่พบข้อมูล {fi(verifySummary.notfound)}</span>
               </span>
             )}
@@ -433,7 +440,7 @@ export default function Upload({ setPage }) {
                             extValue={f.regDiff?.ext}
                             align="right"
                           />
-                          <td className={tdRhi}>{f2(r.com)}</td>
+                          <CompareCell value={f2(r.com)} ok={loading ? null : f.com?.ok} extValue={f.com?.ext} align="right" />
                           <td className={tdC}>
                             {loading ? (
                               <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
@@ -449,6 +456,11 @@ export default function Upload({ setPage }) {
                                 {r.verify.status === 'mismatch' && (
                                   <span className="inline-block px-[9px] py-[3px] bg-[#fef2f2] text-[#b91c1c] rounded-full text-[11.5px] font-semibold">
                                     ไม่ตรงกัน
+                                  </span>
+                                )}
+                                {r.verify.status === 'unverified' && (
+                                  <span className="inline-block px-[9px] py-[3px] bg-[#fffbeb] text-[#92400e] rounded-full text-[11.5px] font-semibold">
+                                    ยังไม่ยืนยัน
                                   </span>
                                 )}
                                 {r.verify.status === 'notfound' && (
