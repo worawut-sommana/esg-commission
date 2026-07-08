@@ -61,21 +61,124 @@ router.get('/data', async (req, res, next) => {
       return res.status(400).json({ error: 'ยังไม่ได้ตั้งค่า API กรุณาไปที่หน้าตั้งค่าก่อน' });
     }
 
-    const url = new URL(settings.api_url);
     const { date_from, date_to, branch, brand } = req.query;
-    if (date_from) url.searchParams.set('date_from', date_from);
-    if (date_to) url.searchParams.set('date_to', date_to);
-    url.searchParams.set('branch', branch || '%');
-    if (brand) url.searchParams.set('brand', brand);
+    const pageSize = 1000;
+    let offset = 0;
+    let items = [];
+    let meta = null;
 
-    const upstream = await fetch(url, { headers: { 'x-api-key': settings.api_key } });
-    const body = await upstream.json().catch(() => null);
-    if (!upstream.ok) {
-      return res.status(upstream.status).json({ error: (body && body.detail) || 'เรียก API ภายนอกไม่สำเร็จ' });
+    // The upstream API paginates (max ~1000 rows/page), so loop until every
+    // matching row for the date range has been collected.
+    while (true) {
+      const url = new URL(settings.api_url);
+      if (date_from) url.searchParams.set('date_from', date_from);
+      if (date_to) url.searchParams.set('date_to', date_to);
+      url.searchParams.set('branch', branch || '%');
+      if (brand) url.searchParams.set('brand', brand);
+      url.searchParams.set('limit', String(pageSize));
+      url.searchParams.set('offset', String(offset));
+
+      const upstream = await fetch(url, { headers: { 'x-api-key': settings.api_key } });
+      const body = await upstream.json().catch(() => null);
+      if (!upstream.ok) {
+        return res.status(upstream.status).json({ error: (body && body.detail) || 'เรียก API ภายนอกไม่สำเร็จ' });
+      }
+      if (!meta) meta = body;
+      items = items.concat(body.items || []);
+      offset += pageSize;
+      if (!body.items || !body.items.length || items.length >= body.total) break;
     }
-    res.json(body);
+
+    res.json({ ...meta, items, fetched: items.length });
   } catch (err) {
     next(err);
+  }
+});
+
+router.post('/data/save', async (req, res, next) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items) || !items.length) {
+    return res.status(400).json({ error: 'ไม่มีข้อมูลให้บันทึก' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let inserted = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    for (const it of items) {
+      if (!it.contno) {
+        skipped++;
+        continue;
+      }
+      const r = await client.query(
+        `INSERT INTO external_sales (
+           contno, sale_type, locat, customer_name, branch, sale_condition,
+           delivery_date, chassis_no, sale_price, wholesales, model_code, msrp,
+           sdate, taxno, taxdt, resvno, brand,
+           registration_paid, registration_payment_count, registration_total_paid, registration_last_paid_at,
+           synced_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21, now())
+         ON CONFLICT (contno) DO UPDATE SET
+           sale_type = EXCLUDED.sale_type,
+           locat = EXCLUDED.locat,
+           customer_name = EXCLUDED.customer_name,
+           branch = EXCLUDED.branch,
+           sale_condition = EXCLUDED.sale_condition,
+           delivery_date = EXCLUDED.delivery_date,
+           chassis_no = EXCLUDED.chassis_no,
+           sale_price = EXCLUDED.sale_price,
+           wholesales = EXCLUDED.wholesales,
+           model_code = EXCLUDED.model_code,
+           msrp = EXCLUDED.msrp,
+           sdate = EXCLUDED.sdate,
+           taxno = EXCLUDED.taxno,
+           taxdt = EXCLUDED.taxdt,
+           resvno = EXCLUDED.resvno,
+           brand = EXCLUDED.brand,
+           registration_paid = EXCLUDED.registration_paid,
+           registration_payment_count = EXCLUDED.registration_payment_count,
+           registration_total_paid = EXCLUDED.registration_total_paid,
+           registration_last_paid_at = EXCLUDED.registration_last_paid_at,
+           synced_at = now()
+         RETURNING (xmax = 0) AS inserted`,
+        [
+          it.contno,
+          it.sale_type || '',
+          it.locat || '',
+          it.customer_name || '',
+          it.branch || '',
+          it.sale_condition || '',
+          it.delivery_date || null,
+          it.chassis_no || '',
+          it.sale_price ?? 0,
+          it.wholesales ?? 0,
+          it.model_code || '',
+          it.msrp ?? 0,
+          it.sdate || null,
+          it.taxno || '',
+          it.taxdt || null,
+          it.resvno || '',
+          it.database_name || '',
+          it.registration_paid ?? false,
+          it.registration_payment_count ?? 0,
+          it.registration_total_paid,
+          it.registration_last_paid_at || null,
+        ]
+      );
+      if (r.rows[0].inserted) inserted++;
+      else updated++;
+    }
+
+    await client.query('COMMIT');
+    res.json({ inserted, updated, skipped, total: inserted + updated });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
   }
 });
 

@@ -52,3 +52,36 @@ CREATE TABLE IF NOT EXISTS integration_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT integration_settings_single_row CHECK (id = 1)
 );
+
+-- Local cache of vehicle sales data pulled from the eaksahalink external API.
+-- contno (the source system's sales contract number) is the natural unique key,
+-- so saving overlapping date ranges again updates existing rows instead of duplicating them.
+CREATE TABLE IF NOT EXISTS external_sales (
+  id BIGSERIAL PRIMARY KEY,
+  contno TEXT NOT NULL UNIQUE,
+  sale_type TEXT NOT NULL DEFAULT '',
+  locat TEXT NOT NULL DEFAULT '',
+  customer_name TEXT NOT NULL DEFAULT '',
+  branch TEXT NOT NULL DEFAULT '',
+  sale_condition TEXT NOT NULL DEFAULT '',
+  delivery_date TIMESTAMPTZ,
+  chassis_no TEXT NOT NULL DEFAULT '',
+  sale_price NUMERIC NOT NULL DEFAULT 0,
+  wholesales NUMERIC NOT NULL DEFAULT 0,
+  model_code TEXT NOT NULL DEFAULT '',
+  msrp NUMERIC NOT NULL DEFAULT 0,
+  sdate TIMESTAMPTZ,
+  taxno TEXT NOT NULL DEFAULT '',
+  taxdt TIMESTAMPTZ,
+  resvno TEXT NOT NULL DEFAULT '',
+  brand TEXT NOT NULL DEFAULT '',
+  registration_paid BOOLEAN NOT NULL DEFAULT false,
+  registration_payment_count INTEGER NOT NULL DEFAULT 0,
+  registration_total_paid NUMERIC,
+  registration_last_paid_at TIMESTAMPTZ,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_external_sales_brand ON external_sales(brand);
+CREATE INDEX IF NOT EXISTS idx_external_sales_delivery_date ON external_sales(delivery_date);

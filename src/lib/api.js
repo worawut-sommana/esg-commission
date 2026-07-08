@@ -53,3 +53,11 @@ export function fetchExternalSalesData(params) {
   const qs = new URLSearchParams(params).toString();
   return fetch(`/api/integration/data?${qs}`).then(handle);
 }
+
+export function saveExternalSalesData(items) {
+  return fetch('/api/integration/data/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items }),
+  }).then(handle);
+}
