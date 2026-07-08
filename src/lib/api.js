@@ -49,6 +49,14 @@ export function saveIntegrationSettings(settings) {
   }).then(handle);
 }
 
+export function testIntegrationSettings(settings) {
+  return fetch('/api/integration/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  }).then(handle);
+}
+
 export function fetchExternalSalesData(params) {
   const qs = new URLSearchParams(params).toString();
   return fetch(`/api/integration/data?${qs}`).then(handle);

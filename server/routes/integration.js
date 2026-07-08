@@ -54,6 +54,43 @@ router.put('/settings', async (req, res, next) => {
   }
 });
 
+router.post('/test', async (req, res, next) => {
+  try {
+    const saved = await getSettings();
+    const { apiUrl, apiKey } = req.body || {};
+    // Empty override means "use whatever's already saved" — same convention
+    // as the settings save endpoint, so testing works before or after saving.
+    const url = (apiUrl && apiUrl.trim()) || saved.api_url;
+    const key = (apiKey && apiKey.trim()) || saved.api_key;
+    if (!url || !key) {
+      return res.status(400).json({ error: 'กรุณากรอก API URL และ API Key ก่อนทดสอบ' });
+    }
+
+    let testUrl;
+    try {
+      testUrl = new URL(url);
+    } catch {
+      return res.status(400).json({ error: 'API URL ไม่ถูกต้อง' });
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    testUrl.searchParams.set('date_from', today);
+    testUrl.searchParams.set('date_to', today);
+    testUrl.searchParams.set('branch', '%');
+    testUrl.searchParams.set('limit', '1');
+    testUrl.searchParams.set('offset', '0');
+
+    const upstream = await fetch(testUrl, { headers: { 'x-api-key': key } });
+    const body = await upstream.json().catch(() => null);
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: (body && body.detail) || `เชื่อมต่อไม่สำเร็จ (HTTP ${upstream.status})` });
+    }
+    res.json({ ok: true, total: body.total ?? 0, brands: body.brands || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/data', async (req, res, next) => {
   try {
     const settings = await getSettings();

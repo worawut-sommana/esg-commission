@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { card, btnPrimary } from '../lib/styles';
-import { fetchIntegrationSettings, saveIntegrationSettings } from '../lib/api';
+import { card, btnPrimary, btnGhost } from '../lib/styles';
+import { fi } from '../lib/format';
+import { fetchIntegrationSettings, saveIntegrationSettings, testIntegrationSettings } from '../lib/api';
 
 export default function Settings() {
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
@@ -11,6 +12,10 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
+
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState('');
+  const [testError, setTestError] = useState('');
 
   const load = async () => {
     setStatus('loading');
@@ -45,6 +50,24 @@ export default function Settings() {
       setError(err.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onTest = async () => {
+    setTesting(true);
+    setTestMsg('');
+    setTestError('');
+    try {
+      const r = await testIntegrationSettings({ apiUrl: apiUrl.trim(), apiKey: apiKeyInput.trim() });
+      setTestMsg(
+        r.total > 0
+          ? `เชื่อมต่อสำเร็จ — พบข้อมูลวันนี้ ${fi(r.total)} รายการ`
+          : 'เชื่อมต่อสำเร็จ (ยังไม่มีข้อมูลของวันนี้)'
+      );
+    } catch (err) {
+      setTestError(err.message || 'ทดสอบการเชื่อมต่อไม่สำเร็จ');
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -100,9 +123,25 @@ export default function Settings() {
               : 'ยังไม่ได้ตั้งค่า API Key'}
           </div>
 
-          <button onClick={onSave} disabled={saving} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
-            {saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
-          </button>
+          {testMsg && (
+            <div className="mb-4 px-4 py-[12px] bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl text-[#15803d] text-[13.5px]">
+              {testMsg}
+            </div>
+          )}
+          {testError && (
+            <div className="mb-4 px-4 py-[12px] bg-[#fef2f2] border border-[#fecaca] rounded-xl text-[#b91c1c] text-[13.5px]">
+              {testError}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={onSave} disabled={saving} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              {saving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
+            </button>
+            <button onClick={onTest} disabled={testing} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              {testing ? 'กำลังทดสอบ...' : 'ทดสอบการเชื่อมต่อ'}
+            </button>
+          </div>
         </div>
       )}
     </section>
