@@ -61,35 +61,21 @@ router.get('/data', async (req, res, next) => {
       return res.status(400).json({ error: 'ยังไม่ได้ตั้งค่า API กรุณาไปที่หน้าตั้งค่าก่อน' });
     }
 
-    const { date_from, date_to, branch, brand } = req.query;
-    const pageSize = 1000;
-    let offset = 0;
-    let items = [];
-    let meta = null;
+    const { date_from, date_to, branch, brand, limit, offset } = req.query;
+    const url = new URL(settings.api_url);
+    if (date_from) url.searchParams.set('date_from', date_from);
+    if (date_to) url.searchParams.set('date_to', date_to);
+    url.searchParams.set('branch', branch || '%');
+    if (brand) url.searchParams.set('brand', brand);
+    url.searchParams.set('limit', String(limit || 1000));
+    url.searchParams.set('offset', String(offset || 0));
 
-    // The upstream API paginates (max ~1000 rows/page), so loop until every
-    // matching row for the date range has been collected.
-    while (true) {
-      const url = new URL(settings.api_url);
-      if (date_from) url.searchParams.set('date_from', date_from);
-      if (date_to) url.searchParams.set('date_to', date_to);
-      url.searchParams.set('branch', branch || '%');
-      if (brand) url.searchParams.set('brand', brand);
-      url.searchParams.set('limit', String(pageSize));
-      url.searchParams.set('offset', String(offset));
-
-      const upstream = await fetch(url, { headers: { 'x-api-key': settings.api_key } });
-      const body = await upstream.json().catch(() => null);
-      if (!upstream.ok) {
-        return res.status(upstream.status).json({ error: (body && body.detail) || 'เรียก API ภายนอกไม่สำเร็จ' });
-      }
-      if (!meta) meta = body;
-      items = items.concat(body.items || []);
-      offset += pageSize;
-      if (!body.items || !body.items.length || items.length >= body.total) break;
+    const upstream = await fetch(url, { headers: { 'x-api-key': settings.api_key } });
+    const body = await upstream.json().catch(() => null);
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({ error: (body && body.detail) || 'เรียก API ภายนอกไม่สำเร็จ' });
     }
-
-    res.json({ ...meta, items, fetched: items.length });
+    res.json(body);
   } catch (err) {
     next(err);
   }

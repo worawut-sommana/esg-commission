@@ -21,6 +21,7 @@ export default function ExternalData() {
   const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
   const [dateTo, setDateTo] = useState(todayIso());
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
 
@@ -36,12 +37,34 @@ export default function ExternalData() {
 
   const onFetch = async () => {
     setLoading(true);
+    setProgress(0);
     setError('');
     setSaveMessage('');
     setSaveError('');
     try {
-      const data = await fetchExternalSalesData({ date_from: dateFrom, date_to: dateTo, branch: '%' });
-      setResult(data);
+      const pageSize = 1000;
+      let offset = 0;
+      let items = [];
+      let meta = null;
+
+      // The upstream API paginates (max ~1000 rows/page), so loop until every
+      // matching row for the date range has been collected, updating % as we go.
+      while (true) {
+        const data = await fetchExternalSalesData({
+          date_from: dateFrom,
+          date_to: dateTo,
+          branch: '%',
+          limit: pageSize,
+          offset,
+        });
+        if (!meta) meta = data;
+        items = items.concat(data.items || []);
+        setProgress(data.total ? Math.min(100, Math.round((items.length / data.total) * 100)) : 100);
+        offset += pageSize;
+        if (!data.items || !data.items.length || items.length >= data.total) break;
+      }
+
+      setResult({ ...meta, items, fetched: items.length });
       setQ('');
       setBrand('');
       setBranch('');
@@ -52,6 +75,7 @@ export default function ExternalData() {
       setResult(null);
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   };
 
@@ -121,9 +145,17 @@ export default function ExternalData() {
             />
           </label>
           <button onClick={onFetch} disabled={loading} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
-            {loading ? 'กำลังดึงข้อมูล...' : 'ดึงข้อมูล'}
+            {loading ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูล'}
           </button>
         </div>
+        {loading && (
+          <div className="mt-3 h-[6px] bg-[#eef1f5] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[var(--ac)] rounded-full transition-[width] duration-200"
+              style={{ width: `${progress ?? 0}%` }}
+            />
+          </div>
+        )}
       </div>
 
       {error && (
