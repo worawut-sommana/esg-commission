@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { card, thL, thC, thR, tdL, tdC, tdR, tdMono, btnPrimary, selectStyle } from '../lib/styles';
+import { card, thL, thC, thR, tdL, tdC, tdR, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, formatIsoDate } from '../lib/format';
 import { fetchSavedExternalSales } from '../lib/api';
 
@@ -17,7 +17,16 @@ function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+const DATE_PRESETS = [
+  { key: 'today', label: 'วันนี้', days: 0 },
+  { key: '7d', label: '7 วัน', days: 7 },
+  { key: '15d', label: '15 วัน', days: 15 },
+  { key: '30d', label: '30 วัน', days: 30 },
+  { key: 'custom', label: 'ระบุวันที่' },
+];
+
 export default function SalesData() {
+  const [datePreset, setDatePreset] = useState('30d');
   const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
   const [dateTo, setDateTo] = useState(todayIso());
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
@@ -30,17 +39,29 @@ export default function SalesData() {
   const [saleType, setSaleType] = useState('');
   const [registration, setRegistration] = useState('');
 
-  const load = async () => {
+  const load = async (overrides = {}) => {
+    const df = overrides.date_from ?? dateFrom;
+    const dt = overrides.date_to ?? dateTo;
     setStatus('loading');
     setError('');
     try {
-      const data = await fetchSavedExternalSales({ date_from: dateFrom, date_to: dateTo });
+      const data = await fetchSavedExternalSales({ date_from: df, date_to: dt });
       setItems(data.items || []);
       setStatus('ready');
     } catch (err) {
       setError(err.message || 'โหลดข้อมูลไม่สำเร็จ');
       setStatus('error');
     }
+  };
+
+  const applyPreset = (preset) => {
+    setDatePreset(preset.key);
+    if (preset.key === 'custom') return;
+    const to = todayIso();
+    const from = daysAgoIso(preset.days);
+    setDateFrom(from);
+    setDateTo(to);
+    load({ date_from: from, date_to: to });
   };
 
   useEffect(() => {
@@ -80,29 +101,44 @@ export default function SalesData() {
       </div>
 
       <div className={card + ' mb-5'}>
-        <div className="flex gap-3 flex-wrap items-end">
-          <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
-            วันที่เริ่ม
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
-            />
-          </label>
-          <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
-            วันที่สิ้นสุด
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
-            />
-          </label>
-          <button onClick={load} disabled={status === 'loading'} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
-            {status === 'loading' ? 'กำลังโหลด...' : 'ค้นหา'}
-          </button>
+        <div className="flex gap-2 flex-wrap">
+          {DATE_PRESETS.map((preset) => (
+            <button
+              key={preset.key}
+              onClick={() => applyPreset(preset)}
+              disabled={status === 'loading'}
+              className={(datePreset === preset.key ? btnPrimary : btnGhost) + ' disabled:opacity-60 disabled:cursor-not-allowed'}
+            >
+              {preset.label}
+            </button>
+          ))}
         </div>
+
+        {datePreset === 'custom' && (
+          <div className="flex gap-3 flex-wrap items-end mt-4">
+            <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+              วันที่เริ่ม
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+              />
+            </label>
+            <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+              วันที่สิ้นสุด
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+              />
+            </label>
+            <button onClick={() => load()} disabled={status === 'loading'} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              {status === 'loading' ? 'กำลังโหลด...' : 'ค้นหา'}
+            </button>
+          </div>
+        )}
       </div>
 
       {status === 'error' && (
