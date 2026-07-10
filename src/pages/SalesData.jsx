@@ -39,6 +39,9 @@ export default function SalesData() {
   const [saleType, setSaleType] = useState('');
   const [registration, setRegistration] = useState('');
 
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(1);
+
   const load = async (overrides = {}) => {
     const df = overrides.date_from ?? dateFrom;
     const dt = overrides.date_to ?? dateTo;
@@ -89,6 +92,14 @@ export default function SalesData() {
       })
       .sort((a, b) => new Date(b.sdate || 0) - new Date(a.sdate || 0));
   }, [items, q, brand, branch, saleType, registration]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [items, q, brand, branch, saleType, registration]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <section className="appfade">
@@ -237,9 +248,9 @@ export default function SalesData() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.map((it, i) => (
+                  {pagedItems.map((it, i) => (
                     <tr key={`${it.contno || it.chassis_no || 'row'}-${i}`} className="border-b border-[#eef1f5]">
-                      <td className={tdC}>{i + 1}</td>
+                      <td className={tdC}>{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
                       <td className={tdL}>{it.brand}</td>
                       <td className={tdL}>{it.branch}</td>
                       <td className={tdMono}>{it.contno}</td>
@@ -274,6 +285,30 @@ export default function SalesData() {
               </table>
               {!filteredItems.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
             </div>
+
+            {filteredItems.length > 0 && (
+              <div className="flex items-center justify-between flex-wrap gap-3 mt-[18px] pt-[18px] border-t border-[#eef1f5]">
+                <div className="text-[12.5px] text-[#8a94a3]">
+                  หน้า {fi(currentPage)} / {fi(totalPages)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage <= 1}
+                    className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}
+                  >
+                    ก่อนหน้า
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                    className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}
+                  >
+                    ถัดไป
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
