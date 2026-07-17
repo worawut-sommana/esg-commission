@@ -12,6 +12,7 @@ import monthsRouter from './routes/months.js';
 import integrationRouter from './routes/integration.js';
 import financierMappingRouter from './routes/financierMapping.js';
 import externalSalesRouter from './routes/externalSales.js';
+import vehicleRegistrationsRouter from './routes/vehicleRegistrations.js';
 
 if (!process.env.SESSION_SECRET) {
   throw new Error('SESSION_SECRET is not set. Add it to your .env file (see .env.example).');
@@ -47,6 +48,7 @@ app.use('/api/months', requireAuth, monthsRouter);
 app.use('/api/integration', requireAuth, integrationRouter);
 app.use('/api/financier-mapping', requireAuth, financierMappingRouter);
 app.use('/api/external-sales', requireAuth, externalSalesRouter);
+app.use('/api/vehicle-registrations', requireAuth, vehicleRegistrationsRouter);
 
 app.use(express.static(distDir));
 app.get(/^(?!\/api).*/, (req, res) => {

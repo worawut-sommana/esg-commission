@@ -129,6 +129,38 @@ export function matchExternalSalesByVin(vins) {
   }).then(handle);
 }
 
+export function fetchVehicleRegistrations() {
+  return fetch('/api/vehicle-registrations').then(handle);
+}
+
+export function createVehicleRegistration(entry) {
+  return fetch('/api/vehicle-registrations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry),
+  }).then(handle);
+}
+
+export function updateVehicleRegistration(id, patch) {
+  return fetch(`/api/vehicle-registrations/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  }).then(handle);
+}
+
+export function deleteVehicleRegistration(id) {
+  return fetch(`/api/vehicle-registrations/${id}`, { method: 'DELETE' }).then(handle);
+}
+
+export function importVehicleRegistrations(rows) {
+  return fetch('/api/vehicle-registrations/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rows }),
+  }).then(handle);
+}
+
 export function fetchFinancierMapping() {
   return fetch('/api/financier-mapping').then(handle);
 }

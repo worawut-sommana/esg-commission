@@ -112,3 +112,20 @@ CREATE TABLE IF NOT EXISTS financier_mapping (
   financier TEXT NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Master data of registration fees per brand/model/year, entered manually
+-- (see "Master DATA ค่าจดทะเบียนแต่ละรุ่น"). ส่วนต่าง is derived as
+-- customer_fee - registration_fee rather than stored.
+CREATE TABLE IF NOT EXISTS vehicle_registrations (
+  id BIGSERIAL PRIMARY KEY,
+  brand TEXT NOT NULL DEFAULT '',
+  import_type TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '',
+  year TEXT NOT NULL DEFAULT '',
+  registration_fee NUMERIC NOT NULL DEFAULT 0,
+  customer_fee NUMERIC NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_registrations_brand ON vehicle_registrations(brand);

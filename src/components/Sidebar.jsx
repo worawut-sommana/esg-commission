@@ -82,6 +82,16 @@ const NAV = [
     ),
   },
   {
+    key: 'vehicleReg',
+    label: 'ทะเบียนรถ',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="7" width="18" height="10" rx="2" />
+        <path d="M7 17v2M17 17v2M3 12h18" />
+      </svg>
+    ),
+  },
+  {
     key: 'settings',
     label: 'ตั้งค่า',
     icon: (
