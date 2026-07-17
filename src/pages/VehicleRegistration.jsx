@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { card, thL, thC, thR, tdL, tdC, tdR, btnPrimary, btnGhost } from '../lib/styles';
-import { f2 } from '../lib/format';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { card, thL, thC, thR, tdL, tdC, tdR, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
+import { f2, fi } from '../lib/format';
 import {
   fetchVehicleRegistrations,
   createVehicleRegistration,
@@ -32,6 +32,34 @@ export default function VehicleRegistration() {
   const [importDraft, setImportDraft] = useState(null); // array of { include, brand, importType, model, year, registrationFee, customerFee } | null
   const [importError, setImportError] = useState('');
   const [importing, setImporting] = useState(false);
+
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterBrand, setFilterBrand] = useState('');
+  const [filterImportType, setFilterImportType] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+
+  const brandOptions = useMemo(() => [...new Set(rows.map((r) => r.brand))].sort(), [rows]);
+  const yearOptions = useMemo(() => [...new Set(rows.map((r) => r.year).filter(Boolean))].sort(), [rows]);
+
+  const filteredRows = useMemo(() => {
+    const q = filterSearch.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (filterBrand && r.brand !== filterBrand) return false;
+      if (filterImportType && r.importType !== filterImportType) return false;
+      if (filterYear && r.year !== filterYear) return false;
+      if (q && !(r.brand.toLowerCase().includes(q) || r.model.toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }, [rows, filterSearch, filterBrand, filterImportType, filterYear]);
+
+  const hasActiveFilters = !!(filterSearch || filterBrand || filterImportType || filterYear);
+
+  const onClearFilters = () => {
+    setFilterSearch('');
+    setFilterBrand('');
+    setFilterImportType('');
+    setFilterYear('');
+  };
 
   const load = async () => {
     setStatus('loading');
@@ -315,6 +343,63 @@ export default function VehicleRegistration() {
             </div>
           )}
 
+          <div className="flex items-end gap-3 flex-wrap mb-5">
+            <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold flex-1 min-w-[200px]">
+              ค้นหา
+              <input
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+                placeholder="ค้นหาแบรนด์หรือรุ่นรถ"
+                className={inputCls}
+              />
+            </label>
+            <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+              แบรนด์
+              <select value={filterBrand} onChange={(e) => setFilterBrand(e.target.value)} className={selectStyle + ' min-w-[140px]!'}>
+                <option value="">ทั้งหมด</option>
+                {brandOptions.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+              รถนำเข้า
+              <select
+                value={filterImportType}
+                onChange={(e) => setFilterImportType(e.target.value)}
+                className={selectStyle + ' min-w-[120px]!'}
+              >
+                <option value="">ทั้งหมด</option>
+                {IMPORT_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+              ประจำปี
+              <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className={selectStyle + ' min-w-[110px]!'}>
+                <option value="">ทั้งหมด</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {hasActiveFilters && (
+              <button onClick={onClearFilters} className={btnGhost}>
+                ล้างตัวกรอง
+              </button>
+            )}
+            <div className="text-[12.5px] text-[#8a94a3] ml-auto pb-[10px]">
+              แสดง {fi(filteredRows.length)} จาก {fi(rows.length)} รายการ
+            </div>
+          </div>
+
           <div className="overflow-x-auto mb-6">
             <table className="w-full border-collapse text-[13px]">
               <thead>
@@ -330,7 +415,7 @@ export default function VehicleRegistration() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => {
+                {filteredRows.map((r) => {
                   const isEditing = editId === r.id;
                   return (
                     <tr key={r.id} className="border-b border-[#eef1f5]">
@@ -442,6 +527,13 @@ export default function VehicleRegistration() {
                   <tr>
                     <td colSpan={8} className="text-center p-11 text-[#98a2b3] text-sm">
                       ยังไม่มีข้อมูลทะเบียนรถ — เพิ่มรายการแรกด้านล่าง
+                    </td>
+                  </tr>
+                )}
+                {rows.length > 0 && !filteredRows.length && (
+                  <tr>
+                    <td colSpan={8} className="text-center p-11 text-[#98a2b3] text-sm">
+                      ไม่พบรายการที่ตรงกับตัวกรอง
                     </td>
                   </tr>
                 )}
