@@ -17,6 +17,31 @@ function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+async function exportSalesToExcel(items, dateFrom, dateTo) {
+  const XLSX = await import('xlsx');
+  const rows = items.map((it, i) => ({
+    '#': i + 1,
+    'แบรนด์': it.brand,
+    'สาขา': it.branch,
+    'เลขที่สัญญา': it.contno,
+    'ชื่อลูกค้า': it.customer_name,
+    'รุ่นรถ': it.model_code,
+    'เลขถัง': it.chassis_no,
+    'เงื่อนไขการขาย': it.sale_condition,
+    'วันที่ขาย': formatIsoDate(it.sdate),
+    'วันที่ส่งมอบ': formatIsoDate(it.delivery_date),
+    'ราคาขาย': it.sale_price ?? '',
+    'ราคาส่ง': it.wholesales ?? '',
+    'MSRP': it.msrp ?? '',
+    'ค่าทะเบียน': it.registration_total_paid ?? '',
+    'สถานะทะเบียน': it.registration_paid ? 'ชำระแล้ว' : 'ยังไม่ชำระ',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ข้อมูลการขาย');
+  XLSX.writeFile(wb, `ข้อมูลการขาย_${dateFrom}_${dateTo}.xlsx`);
+}
+
 const DATE_PRESETS = [
   { key: 'today', label: 'วันนี้', days: 0 },
   { key: '7d', label: '7 วัน', days: 7 },
@@ -32,6 +57,7 @@ export default function SalesData() {
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
+  const [exporting, setExporting] = useState(false);
 
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState('');
@@ -224,6 +250,20 @@ export default function SalesData() {
                   {formatIsoDate(dateFrom)} ถึง {formatIsoDate(dateTo)}
                 </div>
               </div>
+              <button
+                onClick={async () => {
+                  setExporting(true);
+                  try {
+                    await exportSalesToExcel(filteredItems, dateFrom, dateTo);
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+                disabled={exporting || !filteredItems.length}
+                className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}
+              >
+                {exporting ? 'กำลังสร้างไฟล์...' : 'Export Excel'}
+              </button>
             </div>
 
             <div className="overflow-x-auto">
