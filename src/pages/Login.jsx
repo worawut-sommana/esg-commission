@@ -26,19 +26,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#eef1f5] px-4" style={{ '--ac': '#3b5bdb' }}>
       <div className={card + ' w-full max-w-[380px]'}>
-        <div className="flex items-center gap-3 mb-6">
-          <div
-            className="w-10 h-10 rounded-[11px] bg-[var(--ac)] flex items-center justify-center flex-none"
-            style={{ boxShadow: '0 4px 12px -2px var(--ac)' }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 17h14M6 17l1.5-5.5A2 2 0 0 1 9.4 10h5.2a2 2 0 0 1 1.9 1.5L18 17M7 17v2M17 17v2" />
-            </svg>
-          </div>
-          <div>
-            <div className="font-bold text-[15px] text-[#1a2233] leading-[1.1]">ระบบค่าคอม</div>
-            <div className="text-[11px] text-[#98a2b3] mt-[2px]">รถยนต์ · Dashboard</div>
-          </div>
+        <div className="mb-6">
+          <img src="/logo.png" alt="EAKSAHA GROUP" className="w-full max-w-[220px] h-auto" />
+          <div className="text-[11px] text-[#98a2b3] mt-2">ระบบค่าคอมรถยนต์ · Dashboard</div>
         </div>
 
         <h1 className="m-0 text-[20px] font-bold tracking-[-0.01em] mb-1">เข้าสู่ระบบ</h1>

@@ -195,7 +195,7 @@ export default function VehicleRegistration() {
       <div className="mb-[22px] flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="text-xs font-semibold tracking-[0.06em] uppercase text-[var(--ac)] mb-[6px]">ข้อมูลหลัก</div>
-          <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">ทะเบียนรถ</h1>
+          <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">ตารางค่าทะเบียนรถ</h1>
           <div className="text-[#6b7686] text-[13.5px] mt-[6px]">
             ข้อมูลค่าจดทะเบียนแต่ละรุ่น — แบรนด์ รถนำเข้า รุ่นรถ ประจำปี ค่าจดทะเบียน และยอดเก็บลูกค้า
           </div>
@@ -526,7 +526,7 @@ export default function VehicleRegistration() {
                 {!rows.length && (
                   <tr>
                     <td colSpan={8} className="text-center p-11 text-[#98a2b3] text-sm">
-                      ยังไม่มีข้อมูลทะเบียนรถ — เพิ่มรายการแรกด้านล่าง
+                      ยังไม่มีข้อมูลตารางค่าทะเบียนรถ — เพิ่มรายการแรกด้านล่าง
                     </td>
                   </tr>
                 )}

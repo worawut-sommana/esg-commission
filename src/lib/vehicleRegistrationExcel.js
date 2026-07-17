@@ -134,6 +134,6 @@ export async function downloadVehicleRegistrationTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS, ...TEMPLATE_EXAMPLE_ROWS]);
   ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 32 }, { wch: 10 }, { wch: 14 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'ทะเบียนรถ');
-  XLSX.writeFile(wb, 'เทมเพลตทะเบียนรถ.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, 'ตารางค่าทะเบียนรถ');
+  XLSX.writeFile(wb, 'เทมเพลตตารางค่าทะเบียนรถ.xlsx');
 }
