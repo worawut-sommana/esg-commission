@@ -114,31 +114,16 @@ export default function SalesData() {
       const model = it.model_code || '-';
       const key = `${brandName}__${model}`;
       if (!map.has(key)) {
-        map.set(key, { brand: brandName, model, count: 0, paidCount: 0, unpaidCount: 0, totalFee: 0 });
+        map.set(key, { brand: brandName, model, count: 0, totalFee: 0 });
       }
       const row = map.get(key);
       row.count += 1;
-      if (it.registration_paid) row.paidCount += 1;
-      else row.unpaidCount += 1;
       row.totalFee += Number(it.registration_total_paid) || 0;
     }
-    return [...map.values()].sort((a, b) => b.totalFee - a.totalFee || b.count - a.count);
+    return [...map.values()]
+      .map((row) => ({ ...row, avgFee: row.count ? row.totalFee / row.count : 0 }))
+      .sort((a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`));
   }, [filteredItems]);
-
-  const summaryTotals = useMemo(
-    () =>
-      modelSummary.reduce(
-        (acc, row) => {
-          acc.count += row.count;
-          acc.paidCount += row.paidCount;
-          acc.unpaidCount += row.unpaidCount;
-          acc.totalFee += row.totalFee;
-          return acc;
-        },
-        { count: 0, paidCount: 0, unpaidCount: 0, totalFee: 0 }
-      ),
-    [modelSummary]
-  );
 
   return (
     <section className="appfade">
@@ -377,31 +362,25 @@ export default function SalesData() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-[10px]">
-              {modelSummary.map((row, i) => (
-                <div
-                  key={`${row.brand}-${row.model}-${i}`}
-                  className="flex items-center justify-between flex-wrap gap-x-4 gap-y-1 px-4 py-[14px] bg-[#f8f9fb] border border-[#eef1f5] rounded-[12px]"
-                >
-                  <div className="text-[13.5px]">
-                    ยี่ห้อ <span className="font-bold">{row.brand}</span> รุ่น{' '}
-                    <span className="font-bold">{row.model}</span> มีค่าทะเบียนรวม{' '}
-                    <span className="font-bold text-[var(--ac)]">{f2(row.totalFee)} บาท</span>
-                  </div>
-                  <div className="text-[12px] text-[#8a94a3] whitespace-nowrap">
-                    {fi(row.count)} คัน · ชำระแล้ว {fi(row.paidCount)} · ยังไม่ชำระ {fi(row.unpaidCount)}
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[13px]">
+                <thead>
+                  <tr className="bg-[#f4f6fa]">
+                    <th className={thL}>รุ่น</th>
+                    <th className={thR}>ค่าทะเบียน</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modelSummary.map((row, i) => (
+                    <tr key={`${row.brand}-${row.model}-${i}`} className="border-b border-[#eef1f5]">
+                      <td className={tdL}>{row.brand} {row.model}</td>
+                      <td className={tdR}>{f2(row.avgFee)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               {!modelSummary.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
             </div>
-
-            {modelSummary.length > 0 && (
-              <div className="flex items-center justify-between flex-wrap gap-3 mt-[18px] pt-[18px] border-t border-[#eef1f5]">
-                <div className="font-semibold text-[13.5px]">รวมทั้งหมด {fi(summaryTotals.count)} คัน</div>
-                <div className="font-bold text-[15px] text-[var(--ac)]">{f2(summaryTotals.totalFee)} บาท</div>
-              </div>
-            )}
           </div>
           )}
         </>
