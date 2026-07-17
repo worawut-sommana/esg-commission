@@ -134,21 +134,25 @@ export default function SalesData() {
   const currentPage = Math.min(page, totalPages);
   const pagedItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const groupedByModel = useMemo(() => {
+  const groupedByModelFee = useMemo(() => {
     const map = new Map();
     for (const it of filteredItems) {
       const brandName = it.brand || '-';
       const model = it.model_code || '-';
-      const key = `${brandName}__${model}`;
+      const fee = it.registration_total_paid != null ? Number(it.registration_total_paid) : null;
+      const key = `${brandName}__${model}__${fee}`;
       if (!map.has(key)) {
-        map.set(key, { key, brand: brandName, model, count: 0, totalFee: 0, rows: [] });
+        map.set(key, { key, brand: brandName, model, fee, rows: [] });
       }
-      const g = map.get(key);
-      g.count += 1;
-      g.totalFee += Number(it.registration_total_paid) || 0;
-      g.rows.push(it);
+      map.get(key).rows.push(it);
     }
-    return [...map.values()].sort((a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`));
+    return [...map.values()].sort((a, b) => {
+      const modelCmp = `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`);
+      if (modelCmp !== 0) return modelCmp;
+      if (a.fee == null) return 1;
+      if (b.fee == null) return -1;
+      return a.fee - b.fee;
+    });
   }, [filteredItems]);
 
   const toggleGroup = (key) => {
@@ -402,13 +406,13 @@ export default function SalesData() {
               <div>
                 <div className="font-bold text-[15px]">จัดกลุ่มตามรุ่นรถ / ค่าทะเบียน</div>
                 <div className="text-[12.5px] text-[#8a94a3] mt-1">
-                  {formatIsoDate(dateFrom)} ถึง {formatIsoDate(dateTo)} · {fi(groupedByModel.length)} รุ่น
+                  {formatIsoDate(dateFrom)} ถึง {formatIsoDate(dateTo)} · {fi(groupedByModelFee.length)} กลุ่ม
                 </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-[10px]">
-              {groupedByModel.map((g) => {
+              {groupedByModelFee.map((g) => {
                 const open = expandedGroups.has(g.key);
                 return (
                   <div key={g.key} className="border border-[#eef1f5] rounded-[12px] overflow-hidden">
@@ -426,9 +430,11 @@ export default function SalesData() {
                         <span className="font-semibold text-[13.5px]">
                           {g.brand} {g.model}
                         </span>
-                        <span className="text-[12px] text-[#8a94a3]">{fi(g.count)} คัน</span>
+                        <span className="text-[12px] text-[#8a94a3]">{fi(g.rows.length)} คัน</span>
                       </div>
-                      <div className="font-bold text-[13.5px] text-[var(--ac)] whitespace-nowrap">{f2(g.totalFee)} บาท</div>
+                      <div className="font-bold text-[13.5px] text-[var(--ac)] whitespace-nowrap">
+                        {g.fee != null ? `${f2(g.fee)} บาท` : 'ไม่มีราคา'}
+                      </div>
                     </button>
 
                     {open && (
@@ -441,6 +447,7 @@ export default function SalesData() {
                               <th className={thL}>ชื่อลูกค้า</th>
                               <th className={thL}>วันที่ขาย</th>
                               <th className={thR}>ราคาขาย</th>
+                              <th className={thR}>ค่าทะเบียน</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -451,6 +458,7 @@ export default function SalesData() {
                                 <td className={tdL}>{it.customer_name}</td>
                                 <td className={tdL}>{formatIsoDate(it.sdate)}</td>
                                 <td className={tdR}>{f2(it.sale_price)}</td>
+                                <td className={tdR}>{it.registration_total_paid != null ? f2(it.registration_total_paid) : '-'}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -460,7 +468,7 @@ export default function SalesData() {
                   </div>
                 );
               })}
-              {!groupedByModel.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
+              {!groupedByModelFee.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
             </div>
           </div>
           )}
