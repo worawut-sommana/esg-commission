@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { card, thL, thC, thR, tdL, tdC, tdR, tdRhi, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
+import { card, thL, thC, thR, tdL, tdC, tdR, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, formatIsoDate } from '../lib/format';
 import { fetchSavedExternalSales } from '../lib/api';
 
@@ -377,55 +377,31 @@ export default function SalesData() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px] min-w-[900px]">
-                <thead>
-                  <tr className="bg-[#f4f6fa]">
-                    <th className={thC}>#</th>
-                    <th className={thL}>แบรนด์</th>
-                    <th className={thL}>รุ่นรถ</th>
-                    <th className={thR}>จำนวนคัน</th>
-                    <th className={thR}>ชำระแล้ว</th>
-                    <th className={thR}>ยังไม่ชำระ</th>
-                    <th className={thR}>รวมค่าทะเบียน</th>
-                    <th className={thR}>เฉลี่ย/คัน</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {modelSummary.map((row, i) => (
-                    <tr key={`${row.brand}-${row.model}-${i}`} className="border-b border-[#eef1f5]">
-                      <td className={tdC}>{i + 1}</td>
-                      <td className={tdL}>{row.brand}</td>
-                      <td className={tdL}>
-                        <span className="inline-block px-[9px] py-[3px] bg-[#eef2fb] text-[var(--ac)] rounded-full text-[11.5px] font-semibold">
-                          {row.model}
-                        </span>
-                      </td>
-                      <td className={tdR}>{fi(row.count)}</td>
-                      <td className={tdR}>{fi(row.paidCount)}</td>
-                      <td className={tdR}>{fi(row.unpaidCount)}</td>
-                      <td className={tdR}>{f2(row.totalFee)}</td>
-                      <td className={tdR}>{f2(row.count ? row.totalFee / row.count : 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                {modelSummary.length > 0 && (
-                  <tfoot>
-                    <tr className="border-t-2 border-[#e9edf3]">
-                      <td className={tdC}></td>
-                      <td className={tdL}></td>
-                      <td className={tdL + ' font-bold'}>รวมทั้งหมด</td>
-                      <td className={tdRhi}>{fi(summaryTotals.count)}</td>
-                      <td className={tdRhi}>{fi(summaryTotals.paidCount)}</td>
-                      <td className={tdRhi}>{fi(summaryTotals.unpaidCount)}</td>
-                      <td className={tdRhi}>{f2(summaryTotals.totalFee)}</td>
-                      <td className={tdRhi}>{f2(summaryTotals.count ? summaryTotals.totalFee / summaryTotals.count : 0)}</td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
+            <div className="flex flex-col gap-[10px]">
+              {modelSummary.map((row, i) => (
+                <div
+                  key={`${row.brand}-${row.model}-${i}`}
+                  className="flex items-center justify-between flex-wrap gap-x-4 gap-y-1 px-4 py-[14px] bg-[#f8f9fb] border border-[#eef1f5] rounded-[12px]"
+                >
+                  <div className="text-[13.5px]">
+                    ยี่ห้อ <span className="font-bold">{row.brand}</span> รุ่น{' '}
+                    <span className="font-bold">{row.model}</span> มีค่าทะเบียนรวม{' '}
+                    <span className="font-bold text-[var(--ac)]">{f2(row.totalFee)} บาท</span>
+                  </div>
+                  <div className="text-[12px] text-[#8a94a3] whitespace-nowrap">
+                    {fi(row.count)} คัน · ชำระแล้ว {fi(row.paidCount)} · ยังไม่ชำระ {fi(row.unpaidCount)}
+                  </div>
+                </div>
+              ))}
               {!modelSummary.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
             </div>
+
+            {modelSummary.length > 0 && (
+              <div className="flex items-center justify-between flex-wrap gap-3 mt-[18px] pt-[18px] border-t border-[#eef1f5]">
+                <div className="font-semibold text-[13.5px]">รวมทั้งหมด {fi(summaryTotals.count)} คัน</div>
+                <div className="font-bold text-[15px] text-[var(--ac)]">{f2(summaryTotals.totalFee)} บาท</div>
+              </div>
+            )}
           </div>
           )}
         </>
