@@ -50,7 +50,13 @@ const DATE_PRESETS = [
   { key: 'custom', label: 'ระบุวันที่' },
 ];
 
+const TABS = [
+  { key: 'list', label: 'รายการขาย' },
+  { key: 'grouped', label: 'จัดกลุ่มตามรุ่นรถ / ค่าทะเบียน' },
+];
+
 export default function SalesData() {
+  const [tab, setTab] = useState('list');
   const [datePreset, setDatePreset] = useState('30d');
   const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
   const [dateTo, setDateTo] = useState(todayIso());
@@ -58,6 +64,7 @@ export default function SalesData() {
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
   const [exporting, setExporting] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState(new Set());
 
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState('');
@@ -127,6 +134,32 @@ export default function SalesData() {
   const currentPage = Math.min(page, totalPages);
   const pagedItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  const groupedByModel = useMemo(() => {
+    const map = new Map();
+    for (const it of filteredItems) {
+      const brandName = it.brand || '-';
+      const model = it.model_code || '-';
+      const key = `${brandName}__${model}`;
+      if (!map.has(key)) {
+        map.set(key, { key, brand: brandName, model, count: 0, totalFee: 0, rows: [] });
+      }
+      const g = map.get(key);
+      g.count += 1;
+      g.totalFee += Number(it.registration_total_paid) || 0;
+      g.rows.push(it);
+    }
+    return [...map.values()].sort((a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`));
+  }, [filteredItems]);
+
+  const toggleGroup = (key) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   return (
     <section className="appfade">
       <div className="mb-[22px]">
@@ -135,6 +168,14 @@ export default function SalesData() {
         <div className="text-[#6b7686] text-[13.5px] mt-[6px]">
           ข้อมูลยอดขายจากระบบ eaksahalink ที่บันทึกลงฐานข้อมูลไว้แล้ว
         </div>
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-5">
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)} className={tab === t.key ? btnPrimary : btnGhost}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <div className={card + ' mb-5'}>
@@ -184,6 +225,7 @@ export default function SalesData() {
 
       {status !== 'loading' && !error && (
         <>
+          {tab === 'list' && (
           <div className={card + ' mb-5'}>
             <div className="flex gap-3 flex-wrap items-end">
               <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold flex-1 min-w-[220px]">
@@ -239,7 +281,9 @@ export default function SalesData() {
               </label>
             </div>
           </div>
+          )}
 
+          {tab === 'list' && (
           <div className={card}>
             <div className="flex items-center justify-between flex-wrap gap-3 mb-[18px]">
               <div>
@@ -350,6 +394,76 @@ export default function SalesData() {
               </div>
             )}
           </div>
+          )}
+
+          {tab === 'grouped' && (
+          <div className={card}>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-[18px]">
+              <div>
+                <div className="font-bold text-[15px]">จัดกลุ่มตามรุ่นรถ / ค่าทะเบียน</div>
+                <div className="text-[12.5px] text-[#8a94a3] mt-1">
+                  {formatIsoDate(dateFrom)} ถึง {formatIsoDate(dateTo)} · {fi(groupedByModel.length)} รุ่น
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-[10px]">
+              {groupedByModel.map((g) => {
+                const open = expandedGroups.has(g.key);
+                return (
+                  <div key={g.key} className="border border-[#eef1f5] rounded-[12px] overflow-hidden">
+                    <button
+                      onClick={() => toggleGroup(g.key)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-[14px] bg-[#f8f9fb] text-left cursor-pointer border-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="inline-block text-[#8a94a3] text-[11px] transition-transform"
+                          style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                        >
+                          ▶
+                        </span>
+                        <span className="font-semibold text-[13.5px]">
+                          {g.brand} {g.model}
+                        </span>
+                        <span className="text-[12px] text-[#8a94a3]">{fi(g.count)} คัน</span>
+                      </div>
+                      <div className="font-bold text-[13.5px] text-[var(--ac)] whitespace-nowrap">{f2(g.totalFee)} บาท</div>
+                    </button>
+
+                    {open && (
+                      <div className="overflow-x-auto border-t border-[#eef1f5]">
+                        <table className="w-full border-collapse text-[13px] min-w-[700px]">
+                          <thead>
+                            <tr className="bg-white">
+                              <th className={thL}>เลขถัง</th>
+                              <th className={thL}>เลขที่สัญญา</th>
+                              <th className={thL}>ชื่อลูกค้า</th>
+                              <th className={thL}>วันที่ขาย</th>
+                              <th className={thR}>ราคาขาย</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {g.rows.map((it, i) => (
+                              <tr key={`${it.contno || it.chassis_no || 'row'}-${i}`} className="border-t border-[#eef1f5]">
+                                <td className={tdMono}>{it.chassis_no}</td>
+                                <td className={tdMono}>{it.contno}</td>
+                                <td className={tdL}>{it.customer_name}</td>
+                                <td className={tdL}>{formatIsoDate(it.sdate)}</td>
+                                <td className={tdR}>{f2(it.sale_price)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {!groupedByModel.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
+            </div>
+          </div>
+          )}
         </>
       )}
     </section>
