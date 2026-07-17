@@ -43,6 +43,23 @@ CREATE TABLE IF NOT EXISTS records (
 CREATE INDEX IF NOT EXISTS idx_brands_month ON brands(month_id);
 CREATE INDEX IF NOT EXISTS idx_records_month ON records(month_id);
 
+CREATE TABLE IF NOT EXISTS users (
+  id BIGSERIAL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  is_admin BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Session store used by connect-pg-simple (express-session).
+CREATE TABLE IF NOT EXISTS session (
+  sid VARCHAR NOT NULL COLLATE "default" PRIMARY KEY,
+  sess JSON NOT NULL,
+  expire TIMESTAMP(6) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_expire ON session(expire);
+
 -- Single-row table holding the external eaksahalink API connection details.
 -- The api_key is never sent back to the browser after it's saved.
 CREATE TABLE IF NOT EXISTS integration_settings (

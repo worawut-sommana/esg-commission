@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 import { card, btnPrimary, btnGhost } from '../lib/styles';
 import { fi } from '../lib/format';
-import { fetchIntegrationSettings, saveIntegrationSettings, testIntegrationSettings } from '../lib/api';
+import {
+  fetchIntegrationSettings,
+  saveIntegrationSettings,
+  testIntegrationSettings,
+  fetchUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+} from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Settings() {
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
@@ -144,6 +153,237 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      <UserManagement />
     </section>
+  );
+}
+
+function UserManagement() {
+  const { user: me } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [status, setStatus] = useState('loading');
+  const [error, setError] = useState('');
+
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const [resetId, setResetId] = useState(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [busyId, setBusyId] = useState(null);
+
+  const load = async () => {
+    setStatus('loading');
+    setError('');
+    try {
+      setUsers(await fetchUsers());
+      setStatus('ready');
+    } catch (err) {
+      setError(err.message || 'โหลดรายชื่อผู้ใช้ไม่สำเร็จ');
+      setStatus('error');
+    }
+  };
+
+  useEffect(() => {
+    if (me?.isAdmin) load();
+  }, [me?.isAdmin]);
+
+  if (!me?.isAdmin) return null;
+
+  const onCreate = async (e) => {
+    e.preventDefault();
+    if (!newUsername.trim() || newPassword.length < 8) return;
+    setCreating(true);
+    setError('');
+    try {
+      const created = await createUser({ username: newUsername.trim(), password: newPassword, isAdmin: newIsAdmin });
+      setUsers((prev) => [...prev, created]);
+      setNewUsername('');
+      setNewPassword('');
+      setNewIsAdmin(false);
+    } catch (err) {
+      setError(err.message || 'สร้างผู้ใช้ไม่สำเร็จ');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const onToggleAdmin = async (u) => {
+    setBusyId(u.id);
+    setError('');
+    try {
+      const updated = await updateUser(u.id, { isAdmin: !u.isAdmin });
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? updated : x)));
+    } catch (err) {
+      setError(err.message || 'อัปเดตไม่สำเร็จ');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onResetPassword = async (id) => {
+    if (resetPassword.length < 8) return;
+    setBusyId(id);
+    setError('');
+    try {
+      await updateUser(id, { password: resetPassword });
+      setResetId(null);
+      setResetPassword('');
+    } catch (err) {
+      setError(err.message || 'ตั้งรหัสผ่านใหม่ไม่สำเร็จ');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onDelete = async (id) => {
+    setBusyId(id);
+    setError('');
+    try {
+      await deleteUser(id);
+      setUsers((prev) => prev.filter((x) => x.id !== id));
+    } catch (err) {
+      setError(err.message || 'ลบผู้ใช้ไม่สำเร็จ');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="mt-8">
+      <div className="mb-[14px]">
+        <h2 className="m-0 text-[18px] font-bold tracking-[-0.01em]">จัดการผู้ใช้งาน</h2>
+        <div className="text-[#6b7686] text-[13px] mt-[4px]">เพิ่ม ลบ หรือเปลี่ยนสิทธิ์ผู้ใช้งานในระบบ</div>
+      </div>
+
+      <div className={card + ' max-w-[640px]'}>
+        {error && (
+          <div className="mb-4 px-4 py-[12px] bg-[#fef2f2] border border-[#fecaca] rounded-xl text-[#b91c1c] text-[13.5px]">
+            {error}
+          </div>
+        )}
+
+        {status === 'loading' && <div className="text-[#6b7686] text-[14px]">กำลังโหลด...</div>}
+
+        {status !== 'loading' && (
+          <>
+            <table className="w-full border-collapse mb-5">
+              <thead>
+                <tr className="border-b border-[#e9edf3]">
+                  <th className="text-left text-[11.5px] font-bold text-[#6b7686] uppercase tracking-[0.03em] py-2">ชื่อผู้ใช้</th>
+                  <th className="text-left text-[11.5px] font-bold text-[#6b7686] uppercase tracking-[0.03em] py-2">สิทธิ์</th>
+                  <th className="text-right text-[11.5px] font-bold text-[#6b7686] uppercase tracking-[0.03em] py-2">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id} className="border-b border-[#f1f3f6]">
+                    <td className="py-[10px] text-[13.5px] font-semibold">
+                      {u.username}
+                      {u.id === me.id && <span className="ml-2 text-[11px] text-[#98a2b3] font-normal">(คุณ)</span>}
+                    </td>
+                    <td className="py-[10px] text-[13px]">
+                      <label className="inline-flex items-center gap-[6px] cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={u.isAdmin}
+                          disabled={busyId === u.id}
+                          onChange={() => onToggleAdmin(u)}
+                        />
+                        ผู้ดูแลระบบ
+                      </label>
+                    </td>
+                    <td className="py-[10px] text-right">
+                      <div className="inline-flex items-center gap-2">
+                        {resetId === u.id ? (
+                          <>
+                            <input
+                              value={resetPassword}
+                              onChange={(e) => setResetPassword(e.target.value)}
+                              type="password"
+                              placeholder="รหัสผ่านใหม่"
+                              className="px-2 py-[6px] border border-[#d7dce4] rounded-[8px] text-[12.5px] w-[140px]"
+                            />
+                            <button
+                              onClick={() => onResetPassword(u.id)}
+                              disabled={busyId === u.id || resetPassword.length < 8}
+                              className="px-[10px] py-[6px] bg-[var(--ac)] text-white rounded-[8px] text-[12px] font-semibold disabled:opacity-60"
+                            >
+                              บันทึก
+                            </button>
+                            <button
+                              onClick={() => {
+                                setResetId(null);
+                                setResetPassword('');
+                              }}
+                              className="px-[10px] py-[6px] bg-white border border-[#d7dce4] rounded-[8px] text-[12px] font-semibold"
+                            >
+                              ยกเลิก
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                setResetId(u.id);
+                                setResetPassword('');
+                              }}
+                              className="px-[10px] py-[6px] bg-white border border-[#d7dce4] rounded-[8px] text-[12px] font-semibold text-[#5a6473]"
+                            >
+                              ตั้งรหัสผ่านใหม่
+                            </button>
+                            <button
+                              onClick={() => onDelete(u.id)}
+                              disabled={busyId === u.id || u.id === me.id}
+                              className="px-[10px] py-[6px] bg-white border border-[#fecaca] text-[#b91c1c] rounded-[8px] text-[12px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              ลบ
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <form onSubmit={onCreate} className="flex items-end gap-3 flex-wrap">
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                ชื่อผู้ใช้ใหม่
+                <input
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px] w-[160px]"
+                />
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                รหัสผ่าน
+                <input
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  type="password"
+                  placeholder="อย่างน้อย 8 ตัวอักษร"
+                  className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px] w-[160px]"
+                />
+              </label>
+              <label className="inline-flex items-center gap-[6px] cursor-pointer select-none text-[12.5px] text-[#5a6473] font-semibold pb-[10px]">
+                <input type="checkbox" checked={newIsAdmin} onChange={(e) => setNewIsAdmin(e.target.checked)} />
+                ผู้ดูแลระบบ
+              </label>
+              <button
+                type="submit"
+                disabled={creating || !newUsername.trim() || newPassword.length < 8}
+                className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}
+              >
+                {creating ? 'กำลังเพิ่ม...' : 'เพิ่มผู้ใช้'}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

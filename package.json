@@ -11,12 +11,16 @@
     "start": "node server/index.js",
     "db:migrate": "node server/migrate.js",
     "db:seed": "node server/seed.js",
+    "db:create-user": "node server/createUser.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "pg": "^8.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

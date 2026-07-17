@@ -1,3 +1,8 @@
+let onUnauthorized = null;
+export function setUnauthorizedHandler(fn) {
+  onUnauthorized = fn;
+}
+
 async function handle(res) {
   if (!res.ok) {
     let message = `${res.status} ${res.statusText}`;
@@ -7,10 +12,51 @@ async function handle(res) {
     } catch {
       // ignore non-JSON error bodies
     }
+    if (res.status === 401 && onUnauthorized) onUnauthorized();
     throw new Error(message);
   }
   if (res.status === 204) return null;
   return res.json();
+}
+
+export function login(username, password) {
+  return fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  }).then(handle);
+}
+
+export function logout() {
+  return fetch('/api/auth/logout', { method: 'POST' }).then(handle);
+}
+
+export function fetchMe() {
+  return fetch('/api/auth/me').then(handle);
+}
+
+export function fetchUsers() {
+  return fetch('/api/users').then(handle);
+}
+
+export function createUser(user) {
+  return fetch('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user),
+  }).then(handle);
+}
+
+export function updateUser(id, patch) {
+  return fetch(`/api/users/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  }).then(handle);
+}
+
+export function deleteUser(id) {
+  return fetch(`/api/users/${id}`, { method: 'DELETE' }).then(handle);
 }
 
 export function fetchMonths() {

@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider, useData } from './context/DataContext';
 import { btnPrimary } from './lib/styles';
 import Sidebar from './components/Sidebar';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Report from './pages/Report';
 import Detail from './pages/Detail';
@@ -83,10 +85,32 @@ function AppShell() {
   );
 }
 
-export default function App() {
+function Gate() {
+  const { status } = useAuth();
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#eef1f5]">
+        <div className="text-[#6b7686] text-[14px]">กำลังโหลด...</div>
+      </div>
+    );
+  }
+
+  if (status === 'unauthenticated') {
+    return <Login />;
+  }
+
   return (
     <DataProvider>
       <AppShell />
     </DataProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   );
 }

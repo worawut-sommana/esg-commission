@@ -1,4 +1,5 @@
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 
 const NAV = [
   {
@@ -94,6 +95,7 @@ const NAV = [
 
 export default function Sidebar({ page, setPage }) {
   const { months } = useData();
+  const { user, logout } = useAuth();
 
   return (
     <aside
@@ -136,6 +138,22 @@ export default function Sidebar({ page, setPage }) {
           );
         })}
       </nav>
+
+      <div className="px-[18px] py-3 border-t border-[var(--side-bd)] flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-[13px] font-semibold text-[var(--side-hd)] truncate">{user?.username}</div>
+          <div className="text-[11px] text-[var(--side-mut)]">{user?.isAdmin ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'}</div>
+        </div>
+        <button
+          onClick={logout}
+          title="ออกจากระบบ"
+          className="flex-none w-8 h-8 flex items-center justify-center rounded-[9px] border border-[var(--side-bd)] text-[var(--side-mut-strong)] bg-white cursor-pointer"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+          </svg>
+        </button>
+      </div>
 
       <div className="px-[18px] py-4 border-t border-[var(--side-bd)] text-[11px] text-[var(--side-mut)] leading-[1.5]">
         ข้อมูลถูกจัดเก็บในฐานข้อมูลกลาง
