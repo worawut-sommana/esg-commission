@@ -25,13 +25,7 @@ const DATE_PRESETS = [
   { key: 'custom', label: 'ระบุวันที่' },
 ];
 
-const TABS = [
-  { key: 'list', label: 'รายการขาย' },
-  { key: 'byModel', label: 'สรุปรุ่นรถ / ค่าทะเบียน' },
-];
-
 export default function SalesData() {
-  const [tab, setTab] = useState('list');
   const [datePreset, setDatePreset] = useState('30d');
   const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
   const [dateTo, setDateTo] = useState(todayIso());
@@ -107,24 +101,6 @@ export default function SalesData() {
   const currentPage = Math.min(page, totalPages);
   const pagedItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const modelSummary = useMemo(() => {
-    const map = new Map();
-    for (const it of filteredItems) {
-      const brandName = it.brand || '-';
-      const model = it.model_code || '-';
-      const key = `${brandName}__${model}`;
-      if (!map.has(key)) {
-        map.set(key, { brand: brandName, model, count: 0, totalFee: 0 });
-      }
-      const row = map.get(key);
-      row.count += 1;
-      row.totalFee += Number(it.registration_total_paid) || 0;
-    }
-    return [...map.values()]
-      .map((row) => ({ ...row, avgFee: row.count ? row.totalFee / row.count : 0 }))
-      .sort((a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`));
-  }, [filteredItems]);
-
   return (
     <section className="appfade">
       <div className="mb-[22px]">
@@ -133,18 +109,6 @@ export default function SalesData() {
         <div className="text-[#6b7686] text-[13.5px] mt-[6px]">
           ข้อมูลยอดขายจากระบบ eaksahalink ที่บันทึกลงฐานข้อมูลไว้แล้ว
         </div>
-      </div>
-
-      <div className="flex gap-2 flex-wrap mb-5">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={tab === t.key ? btnPrimary : btnGhost}
-          >
-            {t.label}
-          </button>
-        ))}
       </div>
 
       <div className={card + ' mb-5'}>
@@ -194,7 +158,6 @@ export default function SalesData() {
 
       {status !== 'loading' && !error && (
         <>
-          {tab === 'list' && (
           <div className={card + ' mb-5'}>
             <div className="flex gap-3 flex-wrap items-end">
               <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold flex-1 min-w-[220px]">
@@ -250,9 +213,7 @@ export default function SalesData() {
               </label>
             </div>
           </div>
-          )}
 
-          {tab === 'list' && (
           <div className={card}>
             <div className="flex items-center justify-between flex-wrap gap-3 mb-[18px]">
               <div>
@@ -349,40 +310,6 @@ export default function SalesData() {
               </div>
             )}
           </div>
-          )}
-
-          {tab === 'byModel' && (
-          <div className={card}>
-            <div className="flex items-center justify-between flex-wrap gap-3 mb-[18px]">
-              <div>
-                <div className="font-bold text-[15px]">สรุปค่าทะเบียนแยกตามรุ่นรถ</div>
-                <div className="text-[12.5px] text-[#8a94a3] mt-1">
-                  {formatIsoDate(dateFrom)} ถึง {formatIsoDate(dateTo)} · {fi(modelSummary.length)} รุ่น
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr className="bg-[#f4f6fa]">
-                    <th className={thL}>รุ่น</th>
-                    <th className={thR}>ค่าทะเบียน</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {modelSummary.map((row, i) => (
-                    <tr key={`${row.brand}-${row.model}-${i}`} className="border-b border-[#eef1f5]">
-                      <td className={tdL}>{row.brand} {row.model}</td>
-                      <td className={tdR}>{f2(row.avgFee)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!modelSummary.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
-            </div>
-          </div>
-          )}
         </>
       )}
     </section>
