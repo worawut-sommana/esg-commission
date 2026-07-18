@@ -39,7 +39,7 @@ function detectColumns(rows, anchorRow) {
 
   return {
     brand: pick((h) => /แบรนด์/.test(h)),
-    importType: pick((h) => /นำเข้า|^cbu$|^non$/i.test(h)),
+    importType: pick((h) => /ประเภท|นำเข้า|^cbu$|^non$/i.test(h)),
     model: pick((h) => /รุ่นรถ|^รุ่น/.test(h)),
     year: pick((h) => /ประจำปี|^ปี/.test(h)),
     weight: pick((h) => /น้ำหนัก/.test(h)),
@@ -136,10 +136,10 @@ export async function readVehicleRegistrationExcelFile(file) {
   return parseVehicleRegistrationExcel(arrayBuffer);
 }
 
-const TEMPLATE_HEADERS = ['แบรนด์', 'รถนำเข้า', 'รุ่นรถ', 'ประจำปี', 'น้ำหนัก', 'ค่าจดทะเบียน', 'เก็บลูกค้า', 'ส่วนต่าง'];
+const TEMPLATE_HEADERS = ['แบรนด์', 'ประเภท', 'รุ่นรถ', 'ประจำปี', 'น้ำหนัก', 'ค่าจดทะเบียน', 'เก็บลูกค้า', 'ส่วนต่าง'];
 const TEMPLATE_EXAMPLE_ROWS = [
-  ['JAECOO', 'NON', 'JAECOO 6 EV Long Range 4WD', '2569', 1500, 2856, 3600, 744],
-  ['OMODA', 'CBU', 'OMODA C5 EV Long Range Dynamic', '2569', 1450, 2556, 3300, 744],
+  ['JAECOO', 'EV', 'JAECOO 6 EV Long Range 4WD', '2569', 1500, 2856, 3600, 744],
+  ['OMODA', 'น้ำมัน', 'OMODA C5 Hybrid Dynamic', '2569', 1450, 2556, 3300, 744],
 ];
 
 export async function downloadVehicleRegistrationTemplate() {

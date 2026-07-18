@@ -10,9 +10,9 @@ import {
 } from '../lib/api';
 import { readVehicleRegistrationExcelFile, downloadVehicleRegistrationTemplate } from '../lib/vehicleRegistrationExcel';
 
-const IMPORT_TYPES = ['NON', 'CBU'];
+const VEHICLE_TYPES = ['EV', 'น้ำมัน', 'EV+น้ำมัน'];
 
-const EMPTY_FORM = { brand: '', importType: 'NON', model: '', year: '', weight: '', registrationFee: '', customerFee: '' };
+const EMPTY_FORM = { brand: '', importType: 'EV', model: '', year: '', weight: '', registrationFee: '', customerFee: '' };
 
 const inputCls = 'px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]';
 
@@ -204,7 +204,7 @@ export default function VehicleRegistration() {
           <div className="text-xs font-semibold tracking-[0.06em] uppercase text-[var(--ac)] mb-[6px]">ข้อมูลหลัก</div>
           <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">ตารางค่าทะเบียนรถ</h1>
           <div className="text-[#6b7686] text-[13.5px] mt-[6px]">
-            ข้อมูลค่าจดทะเบียนแต่ละรุ่น — แบรนด์ รถนำเข้า รุ่นรถ ประจำปี ค่าจดทะเบียน และยอดเก็บลูกค้า
+            ข้อมูลค่าจดทะเบียนแต่ละรุ่น — แบรนด์ ประเภท รุ่นรถ ประจำปี ค่าจดทะเบียน และยอดเก็บลูกค้า
           </div>
         </div>
         <div className="flex gap-3">
@@ -253,7 +253,7 @@ export default function VehicleRegistration() {
                   <tr className="bg-[#f4f6fa]">
                     <th className={thC}></th>
                     <th className={thL}>แบรนด์</th>
-                    <th className={thC}>รถนำเข้า</th>
+                    <th className={thC}>ประเภท</th>
                     <th className={thL}>รุ่นรถ</th>
                     <th className={thC}>ประจำปี</th>
                     <th className={thR}>น้ำหนัก</th>
@@ -288,7 +288,7 @@ export default function VehicleRegistration() {
                           className={inputCls + ' w-[90px]'}
                         >
                           <option value="">-</option>
-                          {IMPORT_TYPES.map((t) => (
+                          {VEHICLE_TYPES.map((t) => (
                             <option key={t} value={t}>
                               {t}
                             </option>
@@ -401,14 +401,14 @@ export default function VehicleRegistration() {
               </select>
             </label>
             <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
-              รถนำเข้า
+              ประเภท
               <select
                 value={filterImportType}
                 onChange={(e) => setFilterImportType(e.target.value)}
                 className={selectStyle + ' min-w-[120px]!'}
               >
                 <option value="">ทั้งหมด</option>
-                {IMPORT_TYPES.map((t) => (
+                {VEHICLE_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
@@ -441,7 +441,7 @@ export default function VehicleRegistration() {
               <thead>
                 <tr className="bg-[#f4f6fa]">
                   <th className={thL}>แบรนด์</th>
-                  <th className={thC}>รถนำเข้า</th>
+                  <th className={thC}>ประเภท</th>
                   <th className={thL}>รุ่นรถ</th>
                   <th className={thC}>ประจำปี</th>
                   <th className={thR}>น้ำหนัก</th>
@@ -471,7 +471,7 @@ export default function VehicleRegistration() {
                               onChange={(e) => setEditForm((f) => ({ ...f, importType: e.target.value }))}
                               className={inputCls + ' w-[90px]'}
                             >
-                              {IMPORT_TYPES.map((t) => (
+                              {VEHICLE_TYPES.map((t) => (
                                 <option key={t} value={t}>
                                   {t}
                                 </option>
@@ -606,7 +606,7 @@ export default function VehicleRegistration() {
                       onChange={(e) => setForm((f) => ({ ...f, importType: e.target.value }))}
                       className={inputCls + ' w-full'}
                     >
-                      {IMPORT_TYPES.map((t) => (
+                      {VEHICLE_TYPES.map((t) => (
                         <option key={t} value={t}>
                           {t}
                         </option>
