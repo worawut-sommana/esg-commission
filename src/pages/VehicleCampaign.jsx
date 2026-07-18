@@ -11,15 +11,36 @@ import {
 import { readVehicleCampaignExcelFile, downloadVehicleCampaignTemplate } from '../lib/vehicleCampaignExcel';
 
 const IMPORT_TYPES = ['NON', 'CBU'];
-const BOOKING_CONTROL_OPTIONS = ['Y', 'N'];
+const THAI_MONTHS = [
+  'มกราคม',
+  'กุมภาพันธ์',
+  'มีนาคม',
+  'เมษายน',
+  'พฤษภาคม',
+  'มิถุนายน',
+  'กรกฎาคม',
+  'สิงหาคม',
+  'กันยายน',
+  'ตุลาคม',
+  'พฤศจิกายน',
+  'ธันวาคม',
+];
+// Buddhist era, matching the ประจำปี convention used across this app (e.g. "2569").
+const CURRENT_BUDDHIST_YEAR = new Date().getFullYear() + 543;
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => String(CURRENT_BUDDHIST_YEAR - 1 + i));
+
+function monthLabel(m) {
+  const i = Number(m);
+  return i >= 1 && i <= 12 ? THAI_MONTHS[i - 1] : m;
+}
 
 const EMPTY_FORM = {
   brand: '',
   importType: 'NON',
   model: '',
   month: '',
-  year: '',
-  bookingControl: '',
+  year: String(CURRENT_BUDDHIST_YEAR),
+  bookingControl: 'N',
   bookingStart: '',
   bookingEnd: '',
   msrp: '',
@@ -37,6 +58,7 @@ export default function VehicleCampaign() {
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
@@ -99,6 +121,7 @@ export default function VehicleCampaign() {
       const created = await createVehicleCampaign(form);
       setRows((prev) => [...prev, created]);
       setForm(EMPTY_FORM);
+      setShowAddModal(false);
     } catch (err) {
       setError(err.message || 'เพิ่มข้อมูลไม่สำเร็จ');
     } finally {
@@ -106,11 +129,10 @@ export default function VehicleCampaign() {
     }
   };
 
-  const onAddRowKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onCreate();
-    }
+  const onCloseAddModal = () => {
+    setShowAddModal(false);
+    setForm(EMPTY_FORM);
+    setError('');
   };
 
   const startEdit = (row) => {
@@ -226,13 +248,18 @@ export default function VehicleCampaign() {
             ข้อมูลนโยบายการขาย/แคมเปญแต่ละรุ่น — ช่วงวันจอง, MSRP, RS Price และส่วนลดแคมเปญ
           </div>
         </div>
-        <div className="flex gap-3">
-          <button onClick={onDownloadTemplate} disabled={downloadingTemplate} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
-            ดาวน์โหลดเทมเพลต
-          </button>
-          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={onExcelFileSelected} className="hidden" />
-          <button onClick={onPickExcelFile} className={btnPrimary}>
-            นำเข้าจาก Excel
+        <div className="flex flex-col items-end gap-3">
+          <div className="flex gap-3">
+            <button onClick={onDownloadTemplate} disabled={downloadingTemplate} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              ดาวน์โหลดเทมเพลต
+            </button>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={onExcelFileSelected} className="hidden" />
+            <button onClick={onPickExcelFile} className={btnPrimary}>
+              นำเข้าจาก Excel
+            </button>
+          </div>
+          <button onClick={() => setShowAddModal(true)} className={btnPrimary}>
+            + เพิ่มรายการ
           </button>
         </div>
       </div>
@@ -331,18 +358,11 @@ export default function VehicleCampaign() {
                         />
                       </td>
                       <td className={tdC}>
-                        <select
-                          value={r.bookingControl}
-                          onChange={(e) => updateDraftRow(i, { bookingControl: e.target.value })}
-                          className={inputCls + ' w-[70px]'}
-                        >
-                          <option value="">-</option>
-                          {BOOKING_CONTROL_OPTIONS.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
+                        <input
+                          type="checkbox"
+                          checked={r.bookingControl === 'Y'}
+                          onChange={(e) => updateDraftRow(i, { bookingControl: e.target.checked ? 'Y' : 'N' })}
+                        />
                       </td>
                       <td className={tdL}>
                         <input
@@ -536,45 +556,54 @@ export default function VehicleCampaign() {
                             />
                           </td>
                           <td className={tdC}>
-                            <input
+                            <select
                               value={editForm.month}
                               onChange={(e) => setEditForm((f) => ({ ...f, month: e.target.value }))}
-                              className={inputCls + ' w-[60px] text-center'}
-                            />
-                          </td>
-                          <td className={tdC}>
-                            <input
-                              value={editForm.year}
-                              onChange={(e) => setEditForm((f) => ({ ...f, year: e.target.value }))}
-                              className={inputCls + ' w-[70px] text-center'}
-                            />
-                          </td>
-                          <td className={tdC}>
-                            <select
-                              value={editForm.bookingControl}
-                              onChange={(e) => setEditForm((f) => ({ ...f, bookingControl: e.target.value }))}
-                              className={inputCls + ' w-[70px]'}
+                              className={inputCls + ' w-[110px]'}
                             >
                               <option value="">-</option>
-                              {BOOKING_CONTROL_OPTIONS.map((t) => (
-                                <option key={t} value={t}>
-                                  {t}
+                              {THAI_MONTHS.map((label, i) => (
+                                <option key={label} value={String(i + 1)}>
+                                  {label}
                                 </option>
                               ))}
                             </select>
                           </td>
-                          <td className={tdL}>
+                          <td className={tdC}>
+                            <select
+                              value={editForm.year}
+                              onChange={(e) => setEditForm((f) => ({ ...f, year: e.target.value }))}
+                              className={inputCls + ' w-[80px]'}
+                            >
+                              <option value="">-</option>
+                              {YEAR_OPTIONS.map((y) => (
+                                <option key={y} value={y}>
+                                  {y}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className={tdC}>
                             <input
-                              value={editForm.bookingStart}
-                              onChange={(e) => setEditForm((f) => ({ ...f, bookingStart: e.target.value }))}
-                              className={inputCls + ' w-[110px]'}
+                              type="checkbox"
+                              checked={editForm.bookingControl === 'Y'}
+                              onChange={(e) => setEditForm((f) => ({ ...f, bookingControl: e.target.checked ? 'Y' : 'N' }))}
                             />
                           </td>
                           <td className={tdL}>
                             <input
+                              type="date"
+                              value={editForm.bookingStart}
+                              onChange={(e) => setEditForm((f) => ({ ...f, bookingStart: e.target.value }))}
+                              className={inputCls + ' w-[150px]'}
+                            />
+                          </td>
+                          <td className={tdL}>
+                            <input
+                              type="date"
                               value={editForm.bookingEnd}
                               onChange={(e) => setEditForm((f) => ({ ...f, bookingEnd: e.target.value }))}
-                              className={inputCls + ' w-[170px]'}
+                              className={inputCls + ' w-[150px]'}
                             />
                           </td>
                           <td className={tdR}>
@@ -631,7 +660,7 @@ export default function VehicleCampaign() {
                           <td className={tdL + ' font-bold'}>{r.brand}</td>
                           <td className={tdC}>{r.importType}</td>
                           <td className={tdL}>{r.model}</td>
-                          <td className={tdC}>{r.month}</td>
+                          <td className={tdC}>{monthLabel(r.month)}</td>
                           <td className={tdC}>{r.year}</td>
                           <td className={tdC}>{r.bookingControl}</td>
                           <td className={tdL}>{r.bookingStart}</td>
@@ -665,7 +694,7 @@ export default function VehicleCampaign() {
                 {!rows.length && (
                   <tr>
                     <td colSpan={13} className="text-center p-11 text-[#98a2b3] text-sm">
-                      ยังไม่มีข้อมูลทะเบียนรถ-แคมเปญ — เพิ่มรายการแรกด้านล่าง
+                      ยังไม่มีข้อมูลทะเบียนรถ-แคมเปญ — กดปุ่ม "+ เพิ่มรายการ" ด้านบนเพื่อเริ่มต้น
                     </td>
                   </tr>
                 )}
@@ -677,146 +706,181 @@ export default function VehicleCampaign() {
                   </tr>
                 )}
               </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-[#e9edf3] bg-[#fafbfc]">
-                  <td colSpan={13} className="px-3 pt-4 pb-1 text-[12.5px] font-bold text-[#3a4453]">
-                    เพิ่มรายการใหม่
-                  </td>
-                </tr>
-                <tr className="bg-[#fafbfc]">
-                  <td className={tdL}>
-                    <input
-                      value={form.brand}
-                      onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="แบรนด์"
-                      className={inputCls + ' w-full'}
-                    />
-                  </td>
-                  <td className={tdC}>
-                    <select
-                      value={form.importType}
-                      onChange={(e) => setForm((f) => ({ ...f, importType: e.target.value }))}
-                      className={inputCls + ' w-full'}
-                    >
-                      {IMPORT_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className={tdL}>
-                    <input
-                      value={form.model}
-                      onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="รุ่นรถ"
-                      className={inputCls + ' w-full'}
-                    />
-                  </td>
-                  <td className={tdC}>
-                    <input
-                      value={form.month}
-                      onChange={(e) => setForm((f) => ({ ...f, month: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="5"
-                      className={inputCls + ' w-full text-center'}
-                    />
-                  </td>
-                  <td className={tdC}>
-                    <input
-                      value={form.year}
-                      onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="2569"
-                      className={inputCls + ' w-full text-center'}
-                    />
-                  </td>
-                  <td className={tdC}>
-                    <select
-                      value={form.bookingControl}
-                      onChange={(e) => setForm((f) => ({ ...f, bookingControl: e.target.value }))}
-                      className={inputCls + ' w-full'}
-                    >
-                      <option value="">-</option>
-                      {BOOKING_CONTROL_OPTIONS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className={tdL}>
-                    <input
-                      value={form.bookingStart}
-                      onChange={(e) => setForm((f) => ({ ...f, bookingStart: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="วันเริ่มจอง"
-                      className={inputCls + ' w-full'}
-                    />
-                  </td>
-                  <td className={tdL}>
-                    <input
-                      value={form.bookingEnd}
-                      onChange={(e) => setForm((f) => ({ ...f, bookingEnd: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="สิ้นสุดวันที่จอง"
-                      className={inputCls + ' w-full'}
-                    />
-                  </td>
-                  <td className={tdR}>
-                    <input
-                      value={form.msrp}
-                      onChange={(e) => setForm((f) => ({ ...f, msrp: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      className={inputCls + ' w-full text-right'}
-                    />
-                  </td>
-                  <td className={tdR}>
-                    <input
-                      value={form.rsPrice}
-                      onChange={(e) => setForm((f) => ({ ...f, rsPrice: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      className={inputCls + ' w-full text-right'}
-                    />
-                  </td>
-                  <td className={tdR}>
-                    <input
-                      value={form.msrpDiscount}
-                      onChange={(e) => setForm((f) => ({ ...f, msrpDiscount: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      className={inputCls + ' w-full text-right'}
-                    />
-                  </td>
-                  <td className={tdL}>
-                    <input
-                      value={form.note}
-                      onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="หมายเหตุ"
-                      className={inputCls + ' w-full'}
-                    />
-                  </td>
-                  <td className={tdC}>
-                    <button
-                      type="button"
-                      onClick={onCreate}
-                      disabled={creating || !form.brand.trim() || !form.model.trim()}
-                      className="px-[14px] py-[8px] bg-[var(--ac)] text-white rounded-[8px] text-[12px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {creating ? 'กำลังเพิ่ม...' : 'เพิ่มรายการ'}
-                    </button>
-                  </td>
-                </tr>
-              </tfoot>
             </table>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8"
+          onClick={onCloseAddModal}
+        >
+          <div
+            className={card + ' w-full max-w-[640px] max-h-[90vh] overflow-y-auto'}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div className="font-bold text-[16px]">เพิ่มรายการใหม่</div>
+              <button
+                onClick={onCloseAddModal}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#98a2b3] text-[18px] leading-none hover:bg-[#f4f6fa]"
+              >
+                ×
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 px-4 py-[12px] bg-[#fef2f2] border border-[#fecaca] rounded-xl text-[#b91c1c] text-[13.5px]">
+                {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                แบรนด์
+                <input
+                  value={form.brand}
+                  onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                  className={inputCls}
+                  autoFocus
+                />
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                รถนำเข้า(CBU)
+                <select
+                  value={form.importType}
+                  onChange={(e) => setForm((f) => ({ ...f, importType: e.target.value }))}
+                  className={inputCls}
+                >
+                  {IMPORT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold col-span-2">
+                รุ่นรถ
+                <input
+                  value={form.model}
+                  onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
+                  className={inputCls}
+                />
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                ประจำเดือน
+                <select
+                  value={form.month}
+                  onChange={(e) => setForm((f) => ({ ...f, month: e.target.value }))}
+                  className={inputCls}
+                >
+                  <option value="">-</option>
+                  {THAI_MONTHS.map((label, i) => (
+                    <option key={label} value={String(i + 1)}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                ประจำปี
+                <select
+                  value={form.year}
+                  onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+                  className={inputCls}
+                >
+                  <option value="">-</option>
+                  {YEAR_OPTIONS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                คุมวันจอง
+                <span className="flex items-center h-[38px]">
+                  <input
+                    type="checkbox"
+                    checked={form.bookingControl === 'Y'}
+                    onChange={(e) => setForm((f) => ({ ...f, bookingControl: e.target.checked ? 'Y' : 'N' }))}
+                    className="w-[18px] h-[18px]"
+                  />
+                </span>
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                วันเริ่มจอง
+                <input
+                  type="date"
+                  value={form.bookingStart}
+                  onChange={(e) => setForm((f) => ({ ...f, bookingStart: e.target.value }))}
+                  className={inputCls}
+                />
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                สิ้นสุดวันที่จอง
+                <input
+                  type="date"
+                  value={form.bookingEnd}
+                  onChange={(e) => setForm((f) => ({ ...f, bookingEnd: e.target.value }))}
+                  className={inputCls}
+                />
+                <span className="font-normal text-[11px] text-[#98a2b3]">ถ้ายังไม่มีกำหนด ให้เว้นว่างแล้วระบุในหมายเหตุแทน</span>
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                MSRP
+                <input
+                  value={form.msrp}
+                  onChange={(e) => setForm((f) => ({ ...f, msrp: e.target.value }))}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className={inputCls + ' text-right'}
+                />
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                RS Price
+                <input
+                  value={form.rsPrice}
+                  onChange={(e) => setForm((f) => ({ ...f, rsPrice: e.target.value }))}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className={inputCls + ' text-right'}
+                />
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                MSRP - Discount
+                <input
+                  value={form.msrpDiscount}
+                  onChange={(e) => setForm((f) => ({ ...f, msrpDiscount: e.target.value }))}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className={inputCls + ' text-right'}
+                />
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold col-span-2">
+                หมายเหตุ
+                <textarea
+                  value={form.note}
+                  onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                  rows={2}
+                  className={inputCls + ' resize-none'}
+                />
+              </label>
+            </div>
+
+            <div className="flex gap-[10px] justify-end mt-6">
+              <button onClick={onCloseAddModal} className={btnGhost}>
+                ยกเลิก
+              </button>
+              <button
+                onClick={onCreate}
+                disabled={creating || !form.brand.trim() || !form.model.trim()}
+                className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}
+              >
+                {creating ? 'กำลังเพิ่ม...' : 'เพิ่มรายการ'}
+              </button>
+            </div>
           </div>
         </div>
       )}
