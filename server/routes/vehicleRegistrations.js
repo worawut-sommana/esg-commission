@@ -17,6 +17,7 @@ function shapeRow(row) {
     importType: row.import_type,
     model: row.model,
     year: row.year,
+    weight: toNum(row.weight),
     registrationFee,
     customerFee,
     diff: customerFee - registrationFee,
@@ -35,16 +36,16 @@ router.get('/', async (req, res, next) => {
 });
 
 router.post('/', async (req, res, next) => {
-  const { brand, importType, model, year, registrationFee, customerFee } = req.body || {};
+  const { brand, importType, model, year, weight, registrationFee, customerFee } = req.body || {};
   if (!brand?.trim() || !model?.trim()) {
     return res.status(400).json({ error: 'กรุณากรอกแบรนด์และรุ่นรถ' });
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO vehicle_registrations (brand, import_type, model, year, registration_fee, customer_fee)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [brand.trim(), (importType || '').trim(), model.trim(), (year || '').trim(), toNum(registrationFee), toNum(customerFee)]
+      `INSERT INTO vehicle_registrations (brand, import_type, model, year, weight, registration_fee, customer_fee)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [brand.trim(), (importType || '').trim(), model.trim(), (year || '').trim(), toNum(weight), toNum(registrationFee), toNum(customerFee)]
     );
     res.status(201).json(shapeRow(result.rows[0]));
   } catch (err) {
@@ -69,9 +70,9 @@ router.post('/import', async (req, res, next) => {
     const inserted = [];
     for (const r of valid) {
       const result = await client.query(
-        `INSERT INTO vehicle_registrations (brand, import_type, model, year, registration_fee, customer_fee)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [r.brand.trim(), (r.importType || '').trim(), r.model.trim(), (r.year || '').trim(), toNum(r.registrationFee), toNum(r.customerFee)]
+        `INSERT INTO vehicle_registrations (brand, import_type, model, year, weight, registration_fee, customer_fee)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [r.brand.trim(), (r.importType || '').trim(), r.model.trim(), (r.year || '').trim(), toNum(r.weight), toNum(r.registrationFee), toNum(r.customerFee)]
       );
       inserted.push(result.rows[0]);
     }
@@ -87,7 +88,7 @@ router.post('/import', async (req, res, next) => {
 
 router.patch('/:id', async (req, res, next) => {
   const id = Number(req.params.id);
-  const { brand, importType, model, year, registrationFee, customerFee } = req.body || {};
+  const { brand, importType, model, year, weight, registrationFee, customerFee } = req.body || {};
   if (brand !== undefined && !brand.trim()) {
     return res.status(400).json({ error: 'แบรนด์ห้ามเว้นว่าง' });
   }
@@ -112,6 +113,10 @@ router.patch('/:id', async (req, res, next) => {
   if (year !== undefined) {
     values.push(year.trim());
     sets.push(`year = $${values.length}`);
+  }
+  if (weight !== undefined) {
+    values.push(toNum(weight));
+    sets.push(`weight = $${values.length}`);
   }
   if (registrationFee !== undefined) {
     values.push(toNum(registrationFee));

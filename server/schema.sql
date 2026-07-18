@@ -122,10 +122,15 @@ CREATE TABLE IF NOT EXISTS vehicle_registrations (
   import_type TEXT NOT NULL DEFAULT '',
   model TEXT NOT NULL DEFAULT '',
   year TEXT NOT NULL DEFAULT '',
+  weight NUMERIC NOT NULL DEFAULT 0,
   registration_fee NUMERIC NOT NULL DEFAULT 0,
   customer_fee NUMERIC NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Column added after the initial release; keeps existing databases in sync
+-- since the CREATE TABLE above is a no-op once the table already exists.
+ALTER TABLE vehicle_registrations ADD COLUMN IF NOT EXISTS weight NUMERIC NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_vehicle_registrations_brand ON vehicle_registrations(brand);

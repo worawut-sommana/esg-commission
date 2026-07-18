@@ -42,8 +42,10 @@ function detectColumns(rows, anchorRow) {
     importType: pick((h) => /นำเข้า|^cbu$|^non$/i.test(h)),
     model: pick((h) => /รุ่นรถ|^รุ่น/.test(h)),
     year: pick((h) => /ประจำปี|^ปี/.test(h)),
+    weight: pick((h) => /น้ำหนัก/.test(h)),
     registrationFee: pick((h) => /ค่าจดทะเบียน|ค่าทะเบียน/.test(h)),
     customerFee: pick((h) => /เก็บลูกค้า|ยอดลูกค้า/.test(h)),
+    diff: pick((h) => /ส่วนต่าง/.test(h)),
   };
 }
 
@@ -78,13 +80,24 @@ function extractRowsFromSheet(rows) {
       const brand = cellText(row[cols.brand]);
       const model = cellText(row[cols.model]);
       if (!brand || !model) break;
+      const registrationFee = cols.registrationFee != null ? num(row[cols.registrationFee]) : 0;
+      const customerFee = cols.customerFee != null ? num(row[cols.customerFee]) : 0;
+      // If the sheet already has a ส่วนต่าง column, compare it against the
+      // computed value so mismatches can be flagged for review before import.
+      const diffCellText = cols.diff != null ? cellText(row[cols.diff]) : '';
+      const hasImportedDiff = diffCellText !== '';
+      const importedDiff = hasImportedDiff ? num(row[cols.diff]) : null;
+      const computedDiff = customerFee - registrationFee;
       out.push({
         brand,
         importType: cols.importType != null ? cellText(row[cols.importType]) : '',
         model,
         year: cols.year != null ? cellText(row[cols.year]) : '',
-        registrationFee: cols.registrationFee != null ? num(row[cols.registrationFee]) : 0,
-        customerFee: cols.customerFee != null ? num(row[cols.customerFee]) : 0,
+        weight: cols.weight != null ? num(row[cols.weight]) : 0,
+        registrationFee,
+        customerFee,
+        importedDiff,
+        diffMismatch: hasImportedDiff && Math.abs(importedDiff - computedDiff) > 0.01,
       });
     }
     i = Math.max(r, i + 1);
@@ -123,16 +136,16 @@ export async function readVehicleRegistrationExcelFile(file) {
   return parseVehicleRegistrationExcel(arrayBuffer);
 }
 
-const TEMPLATE_HEADERS = ['แบรนด์', 'รถนำเข้า', 'รุ่นรถ', 'ประจำปี', 'ค่าจดทะเบียน', 'เก็บลูกค้า'];
+const TEMPLATE_HEADERS = ['แบรนด์', 'รถนำเข้า', 'รุ่นรถ', 'ประจำปี', 'น้ำหนัก', 'ค่าจดทะเบียน', 'เก็บลูกค้า', 'ส่วนต่าง'];
 const TEMPLATE_EXAMPLE_ROWS = [
-  ['JAECOO', 'NON', 'JAECOO 6 EV Long Range 4WD', '2569', 2856, 3600],
-  ['OMODA', 'CBU', 'OMODA C5 EV Long Range Dynamic', '2569', 2556, 3300],
+  ['JAECOO', 'NON', 'JAECOO 6 EV Long Range 4WD', '2569', 1500, 2856, 3600, 744],
+  ['OMODA', 'CBU', 'OMODA C5 EV Long Range Dynamic', '2569', 1450, 2556, 3300, 744],
 ];
 
 export async function downloadVehicleRegistrationTemplate() {
   const XLSX = await import('xlsx');
   const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS, ...TEMPLATE_EXAMPLE_ROWS]);
-  ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 32 }, { wch: 10 }, { wch: 14 }, { wch: 12 }];
+  ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 32 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ตารางค่าทะเบียนรถ');
   XLSX.writeFile(wb, 'เทมเพลตตารางค่าทะเบียนรถ.xlsx');

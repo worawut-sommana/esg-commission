@@ -12,7 +12,7 @@ import { readVehicleRegistrationExcelFile, downloadVehicleRegistrationTemplate }
 
 const IMPORT_TYPES = ['NON', 'CBU'];
 
-const EMPTY_FORM = { brand: '', importType: 'NON', model: '', year: '', registrationFee: '', customerFee: '' };
+const EMPTY_FORM = { brand: '', importType: 'NON', model: '', year: '', weight: '', registrationFee: '', customerFee: '' };
 
 const inputCls = 'px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]';
 
@@ -100,6 +100,7 @@ export default function VehicleRegistration() {
       importType: row.importType,
       model: row.model,
       year: row.year,
+      weight: row.weight,
       registrationFee: row.registrationFee,
       customerFee: row.customerFee,
     });
@@ -226,6 +227,13 @@ export default function VehicleRegistration() {
             </div>
           </div>
 
+          {importDraft.some((r) => r.diffMismatch) && (
+            <div className="mb-4 px-4 py-[12px] bg-[#fffbeb] border border-[#fde68a] rounded-xl text-[#92400e] text-[13.5px]">
+              พบ {importDraft.filter((r) => r.diffMismatch).length} รายการที่ค่า "ส่วนต่าง" ในไฟล์ไม่ตรงกับค่าที่คำนวณจาก
+              เก็บลูกค้า − ค่าจดทะเบียน (ไฮไลต์สีส้มด้านล่าง) — ระบบจะบันทึกส่วนต่างตามค่าที่คำนวณได้เสมอ กรุณาตรวจสอบตัวเลขให้ถูกต้อง
+            </div>
+          )}
+
           {importError && (
             <div className="mb-4 px-4 py-[12px] bg-[#fef2f2] border border-[#fecaca] rounded-xl text-[#b91c1c] text-[13.5px]">
               {importError}
@@ -242,12 +250,16 @@ export default function VehicleRegistration() {
                     <th className={thC}>รถนำเข้า</th>
                     <th className={thL}>รุ่นรถ</th>
                     <th className={thC}>ประจำปี</th>
+                    <th className={thR}>น้ำหนัก</th>
                     <th className={thR}>ค่าจดทะเบียน</th>
                     <th className={thR}>เก็บลูกค้า</th>
+                    <th className={thR}>ส่วนต่าง</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {importDraft.map((r, i) => (
+                  {importDraft.map((r, i) => {
+                    const computedDiff = (Number(r.customerFee) || 0) - (Number(r.registrationFee) || 0);
+                    return (
                     <tr key={i} className={'border-b border-[#eef1f5] bg-white' + (r.include ? '' : ' opacity-40')}>
                       <td className={tdC}>
                         <input
@@ -293,6 +305,14 @@ export default function VehicleRegistration() {
                       </td>
                       <td className={tdR}>
                         <input
+                          value={r.weight}
+                          onChange={(e) => updateDraftRow(i, { weight: e.target.value })}
+                          inputMode="decimal"
+                          className={inputCls + ' w-[90px] text-right'}
+                        />
+                      </td>
+                      <td className={tdR}>
+                        <input
                           value={r.registrationFee}
                           onChange={(e) => updateDraftRow(i, { registrationFee: e.target.value })}
                           inputMode="decimal"
@@ -307,8 +327,18 @@ export default function VehicleRegistration() {
                           className={inputCls + ' w-[100px] text-right'}
                         />
                       </td>
+                      <td
+                        className={tdR + ' font-semibold' + (r.diffMismatch ? ' bg-[#fff7ed] text-[#c2410c]' : ' text-[#98a2b3]')}
+                        title={r.diffMismatch ? `ค่าในไฟล์: ${f2(r.importedDiff)}` : undefined}
+                      >
+                        {f2(computedDiff)}
+                        {r.diffMismatch && (
+                          <div className="text-[11px] font-normal">ไฟล์: {f2(r.importedDiff)}</div>
+                        )}
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -408,6 +438,7 @@ export default function VehicleRegistration() {
                   <th className={thC}>รถนำเข้า</th>
                   <th className={thL}>รุ่นรถ</th>
                   <th className={thC}>ประจำปี</th>
+                  <th className={thR}>น้ำหนัก</th>
                   <th className={thR}>ค่าจดทะเบียน</th>
                   <th className={thR}>เก็บลูกค้า</th>
                   <th className={thR}>ส่วนต่าง</th>
@@ -457,6 +488,14 @@ export default function VehicleRegistration() {
                           </td>
                           <td className={tdR}>
                             <input
+                              value={editForm.weight}
+                              onChange={(e) => setEditForm((f) => ({ ...f, weight: e.target.value }))}
+                              inputMode="decimal"
+                              className={inputCls + ' w-[90px] text-right'}
+                            />
+                          </td>
+                          <td className={tdR}>
+                            <input
                               value={editForm.registrationFee}
                               onChange={(e) => setEditForm((f) => ({ ...f, registrationFee: e.target.value }))}
                               inputMode="decimal"
@@ -498,6 +537,7 @@ export default function VehicleRegistration() {
                           <td className={tdC}>{r.importType}</td>
                           <td className={tdL}>{r.model}</td>
                           <td className={tdC}>{r.year}</td>
+                          <td className={tdR}>{f2(r.weight)}</td>
                           <td className={tdR}>{f2(r.registrationFee)}</td>
                           <td className={tdR}>{f2(r.customerFee)}</td>
                           <td className={tdR + ' font-bold text-[var(--ac)]'}>{f2(r.diff)}</td>
@@ -525,14 +565,14 @@ export default function VehicleRegistration() {
                 })}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={8} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={9} className="text-center p-11 text-[#98a2b3] text-sm">
                       ยังไม่มีข้อมูลตารางค่าทะเบียนรถ — เพิ่มรายการแรกด้านล่าง
                     </td>
                   </tr>
                 )}
                 {rows.length > 0 && !filteredRows.length && (
                   <tr>
-                    <td colSpan={8} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={9} className="text-center p-11 text-[#98a2b3] text-sm">
                       ไม่พบรายการที่ตรงกับตัวกรอง
                     </td>
                   </tr>
@@ -581,6 +621,16 @@ export default function VehicleRegistration() {
                   onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
                   placeholder="2569"
                   className={inputCls + ' w-[80px] text-center'}
+                />
+              </label>
+              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                น้ำหนัก
+                <input
+                  value={form.weight}
+                  onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className={inputCls + ' w-[90px] text-right'}
                 />
               </label>
               <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
