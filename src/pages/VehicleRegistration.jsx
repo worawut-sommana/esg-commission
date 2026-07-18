@@ -77,8 +77,7 @@ export default function VehicleRegistration() {
     load();
   }, []);
 
-  const onCreate = async (e) => {
-    e.preventDefault();
+  const onCreate = async () => {
     if (!form.brand.trim() || !form.model.trim()) return;
     setCreating(true);
     setError('');
@@ -90,6 +89,13 @@ export default function VehicleRegistration() {
       setError(err.message || 'เพิ่มข้อมูลไม่สำเร็จ');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const onAddRowKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onCreate();
     }
   };
 
@@ -578,89 +584,99 @@ export default function VehicleRegistration() {
                   </tr>
                 )}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-[#e9edf3] bg-[#fafbfc]">
+                  <td colSpan={9} className="px-3 pt-4 pb-1 text-[12.5px] font-bold text-[#3a4453]">
+                    เพิ่มรายการใหม่
+                  </td>
+                </tr>
+                <tr className="bg-[#fafbfc]">
+                  <td className={tdL}>
+                    <input
+                      value={form.brand}
+                      onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                      onKeyDown={onAddRowKeyDown}
+                      placeholder="แบรนด์"
+                      className={inputCls + ' w-full'}
+                    />
+                  </td>
+                  <td className={tdC}>
+                    <select
+                      value={form.importType}
+                      onChange={(e) => setForm((f) => ({ ...f, importType: e.target.value }))}
+                      className={inputCls + ' w-full'}
+                    >
+                      {IMPORT_TYPES.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className={tdL}>
+                    <input
+                      value={form.model}
+                      onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
+                      onKeyDown={onAddRowKeyDown}
+                      placeholder="รุ่นรถ"
+                      className={inputCls + ' w-full'}
+                    />
+                  </td>
+                  <td className={tdC}>
+                    <input
+                      value={form.year}
+                      onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+                      onKeyDown={onAddRowKeyDown}
+                      placeholder="2569"
+                      className={inputCls + ' w-full text-center'}
+                    />
+                  </td>
+                  <td className={tdR}>
+                    <input
+                      value={form.weight}
+                      onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
+                      onKeyDown={onAddRowKeyDown}
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className={inputCls + ' w-full text-right'}
+                    />
+                  </td>
+                  <td className={tdR}>
+                    <input
+                      value={form.registrationFee}
+                      onChange={(e) => setForm((f) => ({ ...f, registrationFee: e.target.value }))}
+                      onKeyDown={onAddRowKeyDown}
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className={inputCls + ' w-full text-right'}
+                    />
+                  </td>
+                  <td className={tdR}>
+                    <input
+                      value={form.customerFee}
+                      onChange={(e) => setForm((f) => ({ ...f, customerFee: e.target.value }))}
+                      onKeyDown={onAddRowKeyDown}
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className={inputCls + ' w-full text-right'}
+                    />
+                  </td>
+                  <td className={tdR + ' text-[#98a2b3]'}>
+                    {f2((Number(form.customerFee) || 0) - (Number(form.registrationFee) || 0))}
+                  </td>
+                  <td className={tdC}>
+                    <button
+                      type="button"
+                      onClick={onCreate}
+                      disabled={creating || !form.brand.trim() || !form.model.trim()}
+                      className="px-[14px] py-[8px] bg-[var(--ac)] text-white rounded-[8px] text-[12px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {creating ? 'กำลังเพิ่ม...' : 'เพิ่มรายการ'}
+                    </button>
+                  </td>
+                </tr>
+              </tfoot>
             </table>
-          </div>
-
-          <div className="pt-5 border-t border-[#e9edf3]">
-            <div className="font-bold text-[14px] mb-3">เพิ่มรายการใหม่</div>
-            <form onSubmit={onCreate} className="flex items-end gap-3 flex-wrap">
-              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
-                แบรนด์
-                <input
-                  value={form.brand}
-                  onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
-                  className={inputCls + ' w-[110px]'}
-                />
-              </label>
-              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
-                รถนำเข้า
-                <select
-                  value={form.importType}
-                  onChange={(e) => setForm((f) => ({ ...f, importType: e.target.value }))}
-                  className={inputCls + ' w-[90px]'}
-                >
-                  {IMPORT_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
-                รุ่นรถ
-                <input
-                  value={form.model}
-                  onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                  className={inputCls + ' w-[220px]'}
-                />
-              </label>
-              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
-                ประจำปี
-                <input
-                  value={form.year}
-                  onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
-                  placeholder="2569"
-                  className={inputCls + ' w-[80px] text-center'}
-                />
-              </label>
-              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
-                น้ำหนัก
-                <input
-                  value={form.weight}
-                  onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  className={inputCls + ' w-[90px] text-right'}
-                />
-              </label>
-              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
-                ค่าจดทะเบียน
-                <input
-                  value={form.registrationFee}
-                  onChange={(e) => setForm((f) => ({ ...f, registrationFee: e.target.value }))}
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  className={inputCls + ' w-[110px] text-right'}
-                />
-              </label>
-              <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
-                เก็บลูกค้า
-                <input
-                  value={form.customerFee}
-                  onChange={(e) => setForm((f) => ({ ...f, customerFee: e.target.value }))}
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  className={inputCls + ' w-[110px] text-right'}
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={creating || !form.brand.trim() || !form.model.trim()}
-                className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}
-              >
-                {creating ? 'กำลังเพิ่ม...' : 'เพิ่มรายการ'}
-              </button>
-            </form>
           </div>
         </div>
       )}
