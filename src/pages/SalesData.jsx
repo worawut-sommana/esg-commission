@@ -28,6 +28,7 @@ async function exportSalesToExcel(items, dateFrom, dateTo) {
     'รุ่นรถ': it.model_code,
     'เลขถัง': it.chassis_no,
     'เงื่อนไขการขาย': it.sale_condition,
+    'ใบกำกับภาษี': it.taxno,
     'วันที่ขาย': formatIsoDate(it.sdate),
     'วันที่ส่งมอบ': formatIsoDate(it.delivery_date),
     'ราคาขาย': it.sale_price ?? '',
@@ -315,7 +316,7 @@ export default function SalesData() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px] min-w-[1700px]">
+              <table className="w-full border-collapse text-[13px] min-w-[1850px]">
                 <thead>
                   <tr className="bg-[#f4f6fa]">
                     <th className={thC}>#</th>
@@ -326,6 +327,7 @@ export default function SalesData() {
                     <th className={thL}>รุ่นรถ</th>
                     <th className={thL}>เลขถัง</th>
                     <th className={thL}>เงื่อนไขการขาย</th>
+                    <th className={thL}>ใบกำกับภาษี</th>
                     <th className={thL}>วันที่ขาย</th>
                     <th className={thL}>วันที่ส่งมอบ</th>
                     <th className={thR}>ราคาขาย</th>
@@ -350,6 +352,7 @@ export default function SalesData() {
                       </td>
                       <td className={tdMono}>{it.chassis_no}</td>
                       <td className={tdL}>{it.sale_condition}</td>
+                      <td className={tdMono}>{it.taxno}</td>
                       <td className={tdL}>{formatIsoDate(it.sdate)}</td>
                       <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
                       <td className={tdR}>{f2(it.sale_price)}</td>
