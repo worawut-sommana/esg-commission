@@ -161,6 +161,38 @@ export function importVehicleRegistrations(rows) {
   }).then(handle);
 }
 
+export function fetchVehicleCampaigns() {
+  return fetch('/api/vehicle-campaigns').then(handle);
+}
+
+export function createVehicleCampaign(entry) {
+  return fetch('/api/vehicle-campaigns', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry),
+  }).then(handle);
+}
+
+export function updateVehicleCampaign(id, patch) {
+  return fetch(`/api/vehicle-campaigns/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  }).then(handle);
+}
+
+export function deleteVehicleCampaign(id) {
+  return fetch(`/api/vehicle-campaigns/${id}`, { method: 'DELETE' }).then(handle);
+}
+
+export function importVehicleCampaigns(rows) {
+  return fetch('/api/vehicle-campaigns/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rows }),
+  }).then(handle);
+}
+
 export function fetchFinancierMapping() {
   return fetch('/api/financier-mapping').then(handle);
 }

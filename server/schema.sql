@@ -134,3 +134,27 @@ CREATE TABLE IF NOT EXISTS vehicle_registrations (
 ALTER TABLE vehicle_registrations ADD COLUMN IF NOT EXISTS weight NUMERIC NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_vehicle_registrations_brand ON vehicle_registrations(brand);
+
+-- Master data of sale-policy/campaign terms per brand/model (see "Master DATA
+-- SALE-POLICY"): booking windows, MSRP, RS price, and the campaign discount.
+-- Dates are kept as free text since the source sheet mixes real dates with
+-- notes like "จนกว่าจะประกาศเปลี่ยนแปลง".
+CREATE TABLE IF NOT EXISTS vehicle_campaigns (
+  id BIGSERIAL PRIMARY KEY,
+  brand TEXT NOT NULL DEFAULT '',
+  import_type TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '',
+  month TEXT NOT NULL DEFAULT '',
+  year TEXT NOT NULL DEFAULT '',
+  booking_control TEXT NOT NULL DEFAULT '',
+  booking_start TEXT NOT NULL DEFAULT '',
+  booking_end TEXT NOT NULL DEFAULT '',
+  msrp NUMERIC NOT NULL DEFAULT 0,
+  rs_price NUMERIC NOT NULL DEFAULT 0,
+  msrp_discount NUMERIC NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_campaigns_brand ON vehicle_campaigns(brand);
