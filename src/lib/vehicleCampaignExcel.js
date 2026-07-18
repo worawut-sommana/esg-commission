@@ -9,6 +9,20 @@ function num(v) {
   return isNaN(n) ? 0 : n;
 }
 
+// Date-formatted Excel cells parse to JS Date objects (see cellDates below).
+// Read the UTC components directly, not local ones — SheetJS builds the Date
+// from the serial's calendar fields as UTC, so local-time getters can shift
+// the day depending on the browser's timezone.
+function dateText(v) {
+  if (v instanceof Date && !isNaN(v)) {
+    const y = v.getUTCFullYear();
+    const m = String(v.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(v.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return cellText(v);
+}
+
 // Header labels occasionally spill onto the row directly below (wrapped
 // cells), so combine each column's text across a couple of rows before
 // matching against the field patterns.
@@ -46,9 +60,11 @@ function detectColumns(rows, anchorRow) {
     bookingControl: pick((h) => /คุมวันจอง/.test(h)),
     bookingStart: pick((h) => /วันเริ่มจอง/.test(h)),
     bookingEnd: pick((h) => /สิ้นสุด.*จอง/.test(h)),
-    // "MSRP" must be matched before "MSRP - Discount" so it doesn't grab
-    // that column too; the exact-match test below only matches the bare label.
-    msrp: pick((h) => /^msrp$/i.test(h)),
+    // Excludes "discount" so this doesn't also grab the MSRP - Discount
+    // column; not anchored because a single-row header (no wrapped second
+    // line) picks up the next row's data cell as trailing text via
+    // compositeHeader, e.g. "MSRP 899000".
+    msrp: pick((h) => /msrp/i.test(h) && !/discount/i.test(h)),
     rsPrice: pick((h) => /rs\s*price/i.test(h)),
     msrpDiscount: pick((h) => /discount/i.test(h)),
     note: pick((h) => /หมายเหตุ/.test(h)),
@@ -93,8 +109,8 @@ function extractRowsFromSheet(rows) {
         month: cols.month != null ? cellText(row[cols.month]) : '',
         year: cols.year != null ? cellText(row[cols.year]) : '',
         bookingControl: cols.bookingControl != null ? cellText(row[cols.bookingControl]) : '',
-        bookingStart: cols.bookingStart != null ? cellText(row[cols.bookingStart]) : '',
-        bookingEnd: cols.bookingEnd != null ? cellText(row[cols.bookingEnd]) : '',
+        bookingStart: cols.bookingStart != null ? dateText(row[cols.bookingStart]) : '',
+        bookingEnd: cols.bookingEnd != null ? dateText(row[cols.bookingEnd]) : '',
         msrp: cols.msrp != null ? num(row[cols.msrp]) : 0,
         rsPrice: cols.rsPrice != null ? num(row[cols.rsPrice]) : 0,
         msrpDiscount: cols.msrpDiscount != null ? num(row[cols.msrpDiscount]) : 0,
@@ -108,7 +124,7 @@ function extractRowsFromSheet(rows) {
 
 export async function parseVehicleCampaignExcel(arrayBuffer) {
   const XLSX = await import('xlsx');
-  const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+  const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array', cellDates: true });
 
   const draftRows = [];
   for (const sheetName of wb.SheetNames) {
