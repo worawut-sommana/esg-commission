@@ -176,15 +176,15 @@ export default function SalesData() {
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap mb-5">
-        {TABS.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={tab === t.key ? btnPrimary : btnGhost}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+        <div className="flex gap-2 flex-wrap">
+          {TABS.map((t) => (
+            <button key={t.key} onClick={() => setTab(t.key)} className={tab === t.key ? btnPrimary : btnGhost}>
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-      <div className={card + ' mb-5'}>
         <div className="flex gap-2 flex-wrap">
           {DATE_PRESETS.map((preset) => (
             <button
@@ -197,9 +197,11 @@ export default function SalesData() {
             </button>
           ))}
         </div>
+      </div>
 
-        {datePreset === 'custom' && (
-          <div className="flex gap-3 flex-wrap items-end mt-4">
+      {datePreset === 'custom' && (
+        <div className={card + ' mb-5'}>
+          <div className="flex gap-3 flex-wrap items-end">
             <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
               วันที่เริ่ม
               <input
@@ -222,8 +224,8 @@ export default function SalesData() {
               {status === 'loading' ? 'กำลังโหลด...' : 'ค้นหา'}
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {status === 'error' && (
         <div className="mb-5 px-4 py-[14px] bg-[#fef2f2] border border-[#fecaca] rounded-xl text-[#b91c1c] text-[13.5px]">{error}</div>
