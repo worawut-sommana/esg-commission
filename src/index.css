@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Also set (redundantly) inline on the app shell in App.jsx. Declared here
+   too so content portaled straight to <body> (e.g. modals) — which sits
+   outside that shell's DOM subtree — still resolves var(--ac) etc. */
+:root {
+  --ac: #3b5bdb;
+  --side-bg: #ffffff;
+  --side-bd: #e9edf3;
+  --side-hd: #1a2233;
+  --side-mut: #98a2b3;
+  --side-mut-strong: #5a6473;
+  --side-active-bg: rgba(59, 91, 219, 0.10);
+}
+
 * {
   box-sizing: border-box;
 }
