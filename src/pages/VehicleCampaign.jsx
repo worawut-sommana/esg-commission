@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { card, thL, thC, thR, tdL, tdC, tdR, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi } from '../lib/format';
 import {
@@ -709,11 +710,12 @@ export default function VehicleCampaign() {
         </div>
       )}
 
-      {showAddModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8"
-          onClick={onCloseAddModal}
-        >
+      {showAddModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8"
+            onClick={onCloseAddModal}
+          >
           <div
             className={card + ' w-full max-w-[640px] my-auto'}
             onClick={(e) => e.stopPropagation()}
@@ -880,8 +882,9 @@ export default function VehicleCampaign() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </section>
   );
 }
