@@ -248,16 +248,14 @@ export default function VehicleCampaign() {
             ข้อมูลนโยบายการขาย/แคมเปญแต่ละรุ่น — ช่วงวันจอง, MSRP, RS Price และส่วนลดแคมเปญ
           </div>
         </div>
-        <div className="flex flex-col items-end gap-3">
-          <div className="flex gap-3">
-            <button onClick={onDownloadTemplate} disabled={downloadingTemplate} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
-              ดาวน์โหลดเทมเพลต
-            </button>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={onExcelFileSelected} className="hidden" />
-            <button onClick={onPickExcelFile} className={btnPrimary}>
-              นำเข้าจาก Excel
-            </button>
-          </div>
+        <div className="flex gap-3">
+          <button onClick={onDownloadTemplate} disabled={downloadingTemplate} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+            ดาวน์โหลดเทมเพลต
+          </button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={onExcelFileSelected} className="hidden" />
+          <button onClick={onPickExcelFile} className={btnPrimary}>
+            นำเข้าจาก Excel
+          </button>
           <button onClick={() => setShowAddModal(true)} className={btnPrimary}>
             + เพิ่มรายการ
           </button>
