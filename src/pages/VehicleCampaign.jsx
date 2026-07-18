@@ -244,7 +244,7 @@ export default function VehicleCampaign() {
       <div className="mb-[22px] flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="text-xs font-semibold tracking-[0.06em] uppercase text-[var(--ac)] mb-[6px]">ข้อมูลหลัก</div>
-          <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">ทะเบียนรถ - แคมเปญ</h1>
+          <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">ตารางแคมเปญ</h1>
           <div className="text-[#6b7686] text-[13.5px] mt-[6px]">
             ข้อมูลนโยบายการขาย/แคมเปญแต่ละรุ่น — ช่วงวันจอง, MSRP, RS Price และส่วนลดแคมเปญ
           </div>
@@ -693,7 +693,7 @@ export default function VehicleCampaign() {
                 {!rows.length && (
                   <tr>
                     <td colSpan={13} className="text-center p-11 text-[#98a2b3] text-sm">
-                      ยังไม่มีข้อมูลทะเบียนรถ-แคมเปญ — กดปุ่ม "+ เพิ่มรายการ" ด้านบนเพื่อเริ่มต้น
+                      ยังไม่มีข้อมูลตารางแคมเปญ — กดปุ่ม "+ เพิ่มรายการ" ด้านบนเพื่อเริ่มต้น
                     </td>
                   </tr>
                 )}

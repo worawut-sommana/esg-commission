@@ -174,6 +174,6 @@ export async function downloadVehicleCampaignTemplate() {
     { wch: 40 },
   ];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'ทะเบียนรถ-แคมเปญ');
-  XLSX.writeFile(wb, 'เทมเพลตทะเบียนรถ-แคมเปญ.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, 'ตารางแคมเปญ');
+  XLSX.writeFile(wb, 'เทมเพลตตารางแคมเปญ.xlsx');
 }
