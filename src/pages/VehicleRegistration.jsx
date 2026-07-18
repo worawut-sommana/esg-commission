@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { card, thL, thC, thR, tdL, tdC, tdR, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi } from '../lib/format';
 import {
@@ -23,6 +24,7 @@ export default function VehicleRegistration() {
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
@@ -85,6 +87,7 @@ export default function VehicleRegistration() {
       const created = await createVehicleRegistration(form);
       setRows((prev) => [...prev, created]);
       setForm(EMPTY_FORM);
+      setShowAddModal(false);
     } catch (err) {
       setError(err.message || 'เพิ่มข้อมูลไม่สำเร็จ');
     } finally {
@@ -92,11 +95,10 @@ export default function VehicleRegistration() {
     }
   };
 
-  const onAddRowKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      onCreate();
-    }
+  const onCloseAddModal = () => {
+    setShowAddModal(false);
+    setForm(EMPTY_FORM);
+    setError('');
   };
 
   const startEdit = (row) => {
@@ -214,6 +216,9 @@ export default function VehicleRegistration() {
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={onExcelFileSelected} className="hidden" />
           <button onClick={onPickExcelFile} className={btnPrimary}>
             นำเข้าจาก Excel
+          </button>
+          <button onClick={() => setShowAddModal(true)} className={btnPrimary}>
+            + เพิ่มรายการ
           </button>
         </div>
       </div>
@@ -572,7 +577,7 @@ export default function VehicleRegistration() {
                 {!rows.length && (
                   <tr>
                     <td colSpan={9} className="text-center p-11 text-[#98a2b3] text-sm">
-                      ยังไม่มีข้อมูลตารางค่าทะเบียนรถ — เพิ่มรายการแรกด้านล่าง
+                      ยังไม่มีข้อมูลตารางค่าทะเบียนรถ — กดปุ่ม "+ เพิ่มรายการ" ด้านบนเพื่อเริ่มต้น
                     </td>
                   </tr>
                 )}
@@ -584,102 +589,129 @@ export default function VehicleRegistration() {
                   </tr>
                 )}
               </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-[#e9edf3] bg-[#fafbfc]">
-                  <td colSpan={9} className="px-3 pt-4 pb-1 text-[12.5px] font-bold text-[#3a4453]">
-                    เพิ่มรายการใหม่
-                  </td>
-                </tr>
-                <tr className="bg-[#fafbfc]">
-                  <td className={tdL}>
-                    <input
-                      value={form.brand}
-                      onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="แบรนด์"
-                      className={inputCls + ' w-full'}
-                    />
-                  </td>
-                  <td className={tdC}>
-                    <select
-                      value={form.importType}
-                      onChange={(e) => setForm((f) => ({ ...f, importType: e.target.value }))}
-                      className={inputCls + ' w-full'}
-                    >
-                      {VEHICLE_TYPES.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className={tdL}>
-                    <input
-                      value={form.model}
-                      onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="รุ่นรถ"
-                      className={inputCls + ' w-full'}
-                    />
-                  </td>
-                  <td className={tdC}>
-                    <input
-                      value={form.year}
-                      onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      placeholder="2569"
-                      className={inputCls + ' w-full text-center'}
-                    />
-                  </td>
-                  <td className={tdR}>
-                    <input
-                      value={form.weight}
-                      onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      className={inputCls + ' w-full text-right'}
-                    />
-                  </td>
-                  <td className={tdR}>
-                    <input
-                      value={form.registrationFee}
-                      onChange={(e) => setForm((f) => ({ ...f, registrationFee: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      className={inputCls + ' w-full text-right'}
-                    />
-                  </td>
-                  <td className={tdR}>
-                    <input
-                      value={form.customerFee}
-                      onChange={(e) => setForm((f) => ({ ...f, customerFee: e.target.value }))}
-                      onKeyDown={onAddRowKeyDown}
-                      inputMode="decimal"
-                      placeholder="0.00"
-                      className={inputCls + ' w-full text-right'}
-                    />
-                  </td>
-                  <td className={tdR + ' text-[#98a2b3]'}>
-                    {f2((Number(form.customerFee) || 0) - (Number(form.registrationFee) || 0))}
-                  </td>
-                  <td className={tdC}>
-                    <button
-                      type="button"
-                      onClick={onCreate}
-                      disabled={creating || !form.brand.trim() || !form.model.trim()}
-                      className="px-[14px] py-[8px] bg-[var(--ac)] text-white rounded-[8px] text-[12px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      {creating ? 'กำลังเพิ่ม...' : 'เพิ่มรายการ'}
-                    </button>
-                  </td>
-                </tr>
-              </tfoot>
             </table>
           </div>
         </div>
       )}
+
+      {showAddModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8"
+            onClick={onCloseAddModal}
+          >
+            <div className={card + ' w-full max-w-[560px] my-auto'} onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="font-bold text-[16px]">เพิ่มรายการใหม่</div>
+                <button
+                  onClick={onCloseAddModal}
+                  className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#98a2b3] text-[18px] leading-none hover:bg-[#f4f6fa]"
+                >
+                  ×
+                </button>
+              </div>
+
+              {error && (
+                <div className="mb-4 px-4 py-[12px] bg-[#fef2f2] border border-[#fecaca] rounded-xl text-[#b91c1c] text-[13.5px]">
+                  {error}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                  แบรนด์
+                  <input
+                    value={form.brand}
+                    onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                    className={inputCls}
+                    autoFocus
+                  />
+                </label>
+                <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                  ประเภท
+                  <select
+                    value={form.importType}
+                    onChange={(e) => setForm((f) => ({ ...f, importType: e.target.value }))}
+                    className={inputCls}
+                  >
+                    {VEHICLE_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold col-span-2">
+                  รุ่นรถ
+                  <input
+                    value={form.model}
+                    onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                  ประจำปี
+                  <input
+                    value={form.year}
+                    onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+                    placeholder="2569"
+                    className={inputCls}
+                  />
+                </label>
+                <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                  น้ำหนัก
+                  <input
+                    value={form.weight}
+                    onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    className={inputCls + ' text-right'}
+                  />
+                </label>
+                <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                  ค่าจดทะเบียน
+                  <input
+                    value={form.registrationFee}
+                    onChange={(e) => setForm((f) => ({ ...f, registrationFee: e.target.value }))}
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    className={inputCls + ' text-right'}
+                  />
+                </label>
+                <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                  เก็บลูกค้า
+                  <input
+                    value={form.customerFee}
+                    onChange={(e) => setForm((f) => ({ ...f, customerFee: e.target.value }))}
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    className={inputCls + ' text-right'}
+                  />
+                </label>
+                <label className="flex flex-col gap-[6px] text-[12.5px] text-[#6b7686] font-semibold">
+                  ส่วนต่าง
+                  <div className={inputCls + ' text-right text-[#98a2b3] bg-[#f4f6fa]'}>
+                    {f2((Number(form.customerFee) || 0) - (Number(form.registrationFee) || 0))}
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex gap-[10px] justify-end mt-6">
+                <button onClick={onCloseAddModal} className={btnGhost}>
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={onCreate}
+                  disabled={creating || !form.brand.trim() || !form.model.trim()}
+                  className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}
+                >
+                  {creating ? 'กำลังเพิ่ม...' : 'เพิ่มรายการ'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </section>
   );
 }
