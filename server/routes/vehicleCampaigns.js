@@ -3,6 +3,8 @@ import { pool } from '../db.js';
 
 const router = Router();
 
+const TABLE = 'vehicle_campaigns';
+
 function toNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -23,6 +25,10 @@ function shapeRow(row) {
     rsPrice: toNum(row.rs_price),
     msrpDiscount: toNum(row.msrp_discount),
     note: row.note,
+    createdBy: row.created_by,
+    updatedBy: row.updated_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -32,10 +38,40 @@ function fields(body) {
   return { brand, importType, model, month, year, bookingControl, bookingStart, bookingEnd, msrp, rsPrice, msrpDiscount, note };
 }
 
+async function logActivity(client, { recordId, action, summary, username }) {
+  await client.query(
+    `INSERT INTO activity_log (table_name, record_id, action, summary, username) VALUES ($1, $2, $3, $4, $5)`,
+    [TABLE, recordId ?? null, action, summary, username || '']
+  );
+}
+
 router.get('/', async (req, res, next) => {
   try {
     const result = await pool.query('SELECT * FROM vehicle_campaigns ORDER BY brand, model, year, month');
     res.json(result.rows.map(shapeRow));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/activity', async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, record_id, action, summary, username, created_at
+       FROM activity_log WHERE table_name = $1
+       ORDER BY created_at DESC LIMIT 200`,
+      [TABLE]
+    );
+    res.json(
+      result.rows.map((r) => ({
+        id: r.id,
+        recordId: r.record_id,
+        action: r.action,
+        summary: r.summary,
+        username: r.username,
+        createdAt: r.created_at,
+      }))
+    );
   } catch (err) {
     next(err);
   }
@@ -48,11 +84,14 @@ router.post('/', async (req, res, next) => {
     return res.status(400).json({ error: 'กรุณากรอกแบรนด์และรุ่นรถ' });
   }
 
+  const username = req.session.username || '';
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+    const result = await client.query(
       `INSERT INTO vehicle_campaigns
-        (brand, import_type, model, month, year, booking_control, booking_start, booking_end, msrp, rs_price, msrp_discount, note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        (brand, import_type, model, month, year, booking_control, booking_start, booking_end, msrp, rs_price, msrp_discount, note, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13) RETURNING *`,
       [
         brand.trim(),
         (importType || '').trim(),
@@ -66,11 +105,23 @@ router.post('/', async (req, res, next) => {
         toNum(rsPrice),
         toNum(msrpDiscount),
         (note || '').trim(),
+        username,
       ]
     );
-    res.status(201).json(shapeRow(result.rows[0]));
+    const row = result.rows[0];
+    await logActivity(client, {
+      recordId: row.id,
+      action: 'insert',
+      summary: `${row.brand} ${row.model}`.trim(),
+      username,
+    });
+    await client.query('COMMIT');
+    res.status(201).json(shapeRow(row));
   } catch (err) {
+    await client.query('ROLLBACK');
     next(err);
+  } finally {
+    client.release();
   }
 });
 
@@ -85,6 +136,7 @@ router.post('/import', async (req, res, next) => {
     return res.status(400).json({ error: 'ไม่มีรายการที่มีแบรนด์และรุ่นรถครบถ้วน' });
   }
 
+  const username = req.session.username || '';
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -92,8 +144,8 @@ router.post('/import', async (req, res, next) => {
     for (const r of valid) {
       const result = await client.query(
         `INSERT INTO vehicle_campaigns
-          (brand, import_type, model, month, year, booking_control, booking_start, booking_end, msrp, rs_price, msrp_discount, note)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+          (brand, import_type, model, month, year, booking_control, booking_start, booking_end, msrp, rs_price, msrp_discount, note, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13) RETURNING *`,
         [
           r.brand.trim(),
           (r.importType || '').trim(),
@@ -107,10 +159,17 @@ router.post('/import', async (req, res, next) => {
           toNum(r.rsPrice),
           toNum(r.msrpDiscount),
           (r.note || '').trim(),
+          username,
         ]
       );
       inserted.push(result.rows[0]);
     }
+    await logActivity(client, {
+      recordId: null,
+      action: 'insert',
+      summary: `นำเข้าจาก Excel ${inserted.length} รายการ`,
+      username,
+    });
     await client.query('COMMIT');
     res.status(201).json(inserted.map(shapeRow));
   } catch (err) {
@@ -132,8 +191,9 @@ router.patch('/:id', async (req, res, next) => {
     return res.status(400).json({ error: 'รุ่นรถห้ามเว้นว่าง' });
   }
 
-  const sets = ['updated_at = now()'];
-  const values = [];
+  const username = req.session.username || '';
+  const sets = ['updated_at = now()', 'updated_by = $1'];
+  const values = [username];
   const set = (column, value) => {
     values.push(value);
     sets.push(`${column} = $${values.length}`);
@@ -153,26 +213,60 @@ router.patch('/:id', async (req, res, next) => {
   if (note !== undefined) set('note', note.trim());
 
   values.push(id);
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+    const result = await client.query(
       `UPDATE vehicle_campaigns SET ${sets.join(', ')} WHERE id = $${values.length} RETURNING *`,
       values
     );
-    if (!result.rows[0]) return res.status(404).json({ error: 'ไม่พบข้อมูล' });
-    res.json(shapeRow(result.rows[0]));
+    const row = result.rows[0];
+    if (!row) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'ไม่พบข้อมูล' });
+    }
+    await logActivity(client, {
+      recordId: row.id,
+      action: 'update',
+      summary: `${row.brand} ${row.model}`.trim(),
+      username,
+    });
+    await client.query('COMMIT');
+    res.json(shapeRow(row));
   } catch (err) {
+    await client.query('ROLLBACK');
     next(err);
+  } finally {
+    client.release();
   }
 });
 
 router.delete('/:id', async (req, res, next) => {
   const id = Number(req.params.id);
+  const username = req.session.username || '';
+  const client = await pool.connect();
   try {
-    const result = await pool.query('DELETE FROM vehicle_campaigns WHERE id = $1', [id]);
-    if (!result.rowCount) return res.status(404).json({ error: 'ไม่พบข้อมูล' });
+    await client.query('BEGIN');
+    const existing = await client.query('SELECT * FROM vehicle_campaigns WHERE id = $1', [id]);
+    const row = existing.rows[0];
+    if (!row) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'ไม่พบข้อมูล' });
+    }
+    await client.query('DELETE FROM vehicle_campaigns WHERE id = $1', [id]);
+    await logActivity(client, {
+      recordId: id,
+      action: 'delete',
+      summary: `${row.brand} ${row.model}`.trim(),
+      username,
+    });
+    await client.query('COMMIT');
     res.status(204).end();
   } catch (err) {
+    await client.query('ROLLBACK');
     next(err);
+  } finally {
+    client.release();
   }
 });
 

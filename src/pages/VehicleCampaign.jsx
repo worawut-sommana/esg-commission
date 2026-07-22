@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { card, thL, thC, thR, tdL, tdC, tdR, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
-import { f2, fi } from '../lib/format';
+import { f2, fi, formatDateTime } from '../lib/format';
 import {
   fetchVehicleCampaigns,
   createVehicleCampaign,
   updateVehicleCampaign,
   deleteVehicleCampaign,
   importVehicleCampaigns,
+  fetchVehicleCampaignActivity,
 } from '../lib/api';
 import { readVehicleCampaignExcelFile, downloadVehicleCampaignTemplate } from '../lib/vehicleCampaignExcel';
+import ActivityLogModal from '../components/ActivityLogModal';
 
 const IMPORT_TYPES = ['NON', 'CBU'];
 const THAI_MONTHS = [
@@ -60,6 +62,7 @@ export default function VehicleCampaign() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
@@ -250,6 +253,9 @@ export default function VehicleCampaign() {
           </div>
         </div>
         <div className="flex gap-3">
+          <button onClick={() => setShowActivity(true)} className={btnGhost}>
+            ประวัติการเปลี่ยนแปลง
+          </button>
           <button onClick={onDownloadTemplate} disabled={downloadingTemplate} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
             ดาวน์โหลดเทมเพลต
           </button>
@@ -517,6 +523,7 @@ export default function VehicleCampaign() {
                   <th className={thR}>RS Price</th>
                   <th className={thR}>MSRP - Discount</th>
                   <th className={thL}>หมายเหตุ</th>
+                  <th className={thL}>แก้ไขล่าสุดโดย</th>
                   <th className={thC}>จัดการ</th>
                 </tr>
               </thead>
@@ -636,6 +643,10 @@ export default function VehicleCampaign() {
                               className={inputCls + ' w-[220px]'}
                             />
                           </td>
+                          <td className={tdL + ' text-[#8a94a3] text-[12px]'} title={`เพิ่มโดย ${r.createdBy || '-'} · ${formatDateTime(r.createdAt)}`}>
+                            {r.updatedBy || '-'}
+                            <div className="text-[11px]">{formatDateTime(r.updatedAt)}</div>
+                          </td>
                           <td className={tdC}>
                             <div className="inline-flex items-center gap-2">
                               <button
@@ -668,6 +679,10 @@ export default function VehicleCampaign() {
                           <td className={tdR}>{f2(r.rsPrice)}</td>
                           <td className={tdR + ' font-bold text-[var(--ac)]'}>{f2(r.msrpDiscount)}</td>
                           <td className={tdL}>{r.note}</td>
+                          <td className={tdL + ' text-[#8a94a3] text-[12px]'} title={`เพิ่มโดย ${r.createdBy || '-'} · ${formatDateTime(r.createdAt)}`}>
+                            {r.updatedBy || '-'}
+                            <div className="text-[11px]">{formatDateTime(r.updatedAt)}</div>
+                          </td>
                           <td className={tdC}>
                             <div className="inline-flex items-center gap-2">
                               <button
@@ -692,14 +707,14 @@ export default function VehicleCampaign() {
                 })}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={13} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={14} className="text-center p-11 text-[#98a2b3] text-sm">
                       ยังไม่มีข้อมูลตารางแคมเปญ — กดปุ่ม "+ เพิ่มรายการ" ด้านบนเพื่อเริ่มต้น
                     </td>
                   </tr>
                 )}
                 {rows.length > 0 && !filteredRows.length && (
                   <tr>
-                    <td colSpan={13} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={14} className="text-center p-11 text-[#98a2b3] text-sm">
                       ไม่พบรายการที่ตรงกับตัวกรอง
                     </td>
                   </tr>
@@ -885,6 +900,8 @@ export default function VehicleCampaign() {
           </div>,
           document.body
         )}
+
+      <ActivityLogModal open={showActivity} onClose={() => setShowActivity(false)} fetchFn={fetchVehicleCampaignActivity} />
     </section>
   );
 }

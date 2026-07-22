@@ -161,6 +161,10 @@ export function importVehicleRegistrations(rows) {
   }).then(handle);
 }
 
+export function fetchVehicleRegistrationActivity() {
+  return fetch('/api/vehicle-registrations/activity').then(handle);
+}
+
 export function fetchVehicleCampaigns() {
   return fetch('/api/vehicle-campaigns').then(handle);
 }
@@ -191,6 +195,10 @@ export function importVehicleCampaigns(rows) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rows }),
   }).then(handle);
+}
+
+export function fetchVehicleCampaignActivity() {
+  return fetch('/api/vehicle-campaigns/activity').then(handle);
 }
 
 export function fetchFinancierMapping() {

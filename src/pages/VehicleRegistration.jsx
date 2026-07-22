@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { card, thL, thC, thR, tdL, tdC, tdR, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
-import { f2, fi } from '../lib/format';
+import { f2, fi, formatDateTime } from '../lib/format';
 import {
   fetchVehicleRegistrations,
   createVehicleRegistration,
   updateVehicleRegistration,
   deleteVehicleRegistration,
   importVehicleRegistrations,
+  fetchVehicleRegistrationActivity,
 } from '../lib/api';
 import { readVehicleRegistrationExcelFile, downloadVehicleRegistrationTemplate } from '../lib/vehicleRegistrationExcel';
+import ActivityLogModal from '../components/ActivityLogModal';
 
 const VEHICLE_TYPES = ['EV', 'น้ำมัน', 'EV+น้ำมัน'];
 
@@ -25,6 +27,7 @@ export default function VehicleRegistration() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
@@ -210,6 +213,9 @@ export default function VehicleRegistration() {
           </div>
         </div>
         <div className="flex gap-3">
+          <button onClick={() => setShowActivity(true)} className={btnGhost}>
+            ประวัติการเปลี่ยนแปลง
+          </button>
           <button onClick={onDownloadTemplate} disabled={downloadingTemplate} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
             ดาวน์โหลดเทมเพลต
           </button>
@@ -453,6 +459,7 @@ export default function VehicleRegistration() {
                   <th className={thR}>ค่าจดทะเบียน</th>
                   <th className={thR}>เก็บลูกค้า</th>
                   <th className={thR}>ส่วนต่าง</th>
+                  <th className={thL}>แก้ไขล่าสุดโดย</th>
                   <th className={thC}>จัดการ</th>
                 </tr>
               </thead>
@@ -524,6 +531,10 @@ export default function VehicleRegistration() {
                           <td className={tdR + ' text-[#98a2b3]'}>
                             {f2((Number(editForm.customerFee) || 0) - (Number(editForm.registrationFee) || 0))}
                           </td>
+                          <td className={tdL + ' text-[#8a94a3] text-[12px]'} title={`เพิ่มโดย ${r.createdBy || '-'} · ${formatDateTime(r.createdAt)}`}>
+                            {r.updatedBy || '-'}
+                            <div className="text-[11px]">{formatDateTime(r.updatedAt)}</div>
+                          </td>
                           <td className={tdC}>
                             <div className="inline-flex items-center gap-2">
                               <button
@@ -552,6 +563,10 @@ export default function VehicleRegistration() {
                           <td className={tdR}>{f2(r.registrationFee)}</td>
                           <td className={tdR}>{f2(r.customerFee)}</td>
                           <td className={tdR + ' font-bold text-[var(--ac)]'}>{f2(r.diff)}</td>
+                          <td className={tdL + ' text-[#8a94a3] text-[12px]'} title={`เพิ่มโดย ${r.createdBy || '-'} · ${formatDateTime(r.createdAt)}`}>
+                            {r.updatedBy || '-'}
+                            <div className="text-[11px]">{formatDateTime(r.updatedAt)}</div>
+                          </td>
                           <td className={tdC}>
                             <div className="inline-flex items-center gap-2">
                               <button
@@ -576,14 +591,14 @@ export default function VehicleRegistration() {
                 })}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={9} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={10} className="text-center p-11 text-[#98a2b3] text-sm">
                       ยังไม่มีข้อมูลตารางค่าทะเบียนรถ — กดปุ่ม "+ เพิ่มรายการ" ด้านบนเพื่อเริ่มต้น
                     </td>
                   </tr>
                 )}
                 {rows.length > 0 && !filteredRows.length && (
                   <tr>
-                    <td colSpan={9} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={10} className="text-center p-11 text-[#98a2b3] text-sm">
                       ไม่พบรายการที่ตรงกับตัวกรอง
                     </td>
                   </tr>
@@ -712,6 +727,8 @@ export default function VehicleRegistration() {
           </div>,
           document.body
         )}
+
+      <ActivityLogModal open={showActivity} onClose={() => setShowActivity(false)} fetchFn={fetchVehicleRegistrationActivity} />
     </section>
   );
 }

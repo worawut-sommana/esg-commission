@@ -130,13 +130,17 @@ CREATE TABLE IF NOT EXISTS vehicle_registrations (
   weight NUMERIC NOT NULL DEFAULT 0,
   registration_fee NUMERIC NOT NULL DEFAULT 0,
   customer_fee NUMERIC NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL DEFAULT '',
+  updated_by TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Column added after the initial release; keeps existing databases in sync
+-- Columns added after the initial release; keeps existing databases in sync
 -- since the CREATE TABLE above is a no-op once the table already exists.
 ALTER TABLE vehicle_registrations ADD COLUMN IF NOT EXISTS weight NUMERIC NOT NULL DEFAULT 0;
+ALTER TABLE vehicle_registrations ADD COLUMN IF NOT EXISTS created_by TEXT NOT NULL DEFAULT '';
+ALTER TABLE vehicle_registrations ADD COLUMN IF NOT EXISTS updated_by TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_vehicle_registrations_brand ON vehicle_registrations(brand);
 
@@ -158,8 +162,31 @@ CREATE TABLE IF NOT EXISTS vehicle_campaigns (
   rs_price NUMERIC NOT NULL DEFAULT 0,
   msrp_discount NUMERIC NOT NULL DEFAULT 0,
   note TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL DEFAULT '',
+  updated_by TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Columns added after the initial release; keeps existing databases in sync
+-- since the CREATE TABLE above is a no-op once the table already exists.
+ALTER TABLE vehicle_campaigns ADD COLUMN IF NOT EXISTS created_by TEXT NOT NULL DEFAULT '';
+ALTER TABLE vehicle_campaigns ADD COLUMN IF NOT EXISTS updated_by TEXT NOT NULL DEFAULT '';
+
 CREATE INDEX IF NOT EXISTS idx_vehicle_campaigns_brand ON vehicle_campaigns(brand);
+
+-- Audit trail of add/edit/delete actions on vehicle_registrations and
+-- vehicle_campaigns. Deleted rows are gone from the source table, so this is
+-- the only place a delete stays visible; username is snapshotted at the time
+-- of the action so the log still reads correctly if the user is later removed.
+CREATE TABLE IF NOT EXISTS activity_log (
+  id BIGSERIAL PRIMARY KEY,
+  table_name TEXT NOT NULL,
+  record_id BIGINT,
+  action TEXT NOT NULL,
+  summary TEXT NOT NULL DEFAULT '',
+  username TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_log_table ON activity_log(table_name, created_at DESC);
