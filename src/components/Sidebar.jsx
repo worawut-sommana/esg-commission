@@ -1,4 +1,3 @@
-import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 
 const NAV = [
@@ -114,7 +113,6 @@ const NAV = [
 ];
 
 export default function Sidebar({ page, setPage }) {
-  const { months } = useData();
   const { user, logout } = useAuth();
 
   return (
@@ -163,11 +161,6 @@ export default function Sidebar({ page, setPage }) {
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
           </svg>
         </button>
-      </div>
-
-      <div className="px-[18px] py-4 border-t border-[var(--side-bd)] text-[11px] text-[var(--side-mut)] leading-[1.5]">
-        ข้อมูลถูกจัดเก็บในฐานข้อมูลกลาง
-        <br />({months.length} รอบวางบิล)
       </div>
     </aside>
   );
