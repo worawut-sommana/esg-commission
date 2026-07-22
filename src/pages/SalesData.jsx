@@ -486,11 +486,13 @@ export default function SalesData() {
   );
 }
 
-function DetailRow({ label, value }) {
+function Field({ label, value, mono }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-[10px] border-b border-[#f1f3f6] last:border-b-0">
-      <span className="text-[12.5px] text-[#8a94a3] font-semibold">{label}</span>
-      <span className="text-[13.5px] font-semibold text-right">{value || '-'}</span>
+    <div className="flex flex-col gap-[3px] min-w-0">
+      <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">{label}</span>
+      <span className={'text-[13.5px] font-semibold text-[#1a2233] truncate' + (mono ? ' font-mono text-[12.5px]' : '')}>
+        {value || value === 0 ? value : '-'}
+      </span>
     </div>
   );
 }
@@ -499,12 +501,10 @@ function SaleDetailModal({ item, onClose }) {
   if (!item) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8" onClick={onClose}>
-      <div className={card + ' w-full max-w-[480px] my-auto'} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-1">
+      <div className={card + ' w-full max-w-[560px] my-auto'} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="font-bold text-[16px]">
-              {item.brand} {item.model_code}
-            </div>
+            <div className="font-bold text-[16px]">รายละเอียดการขาย</div>
             <div className="text-[12px] text-[#8a94a3] font-mono mt-[2px]">{item.chassis_no}</div>
           </div>
           <button
@@ -515,14 +515,36 @@ function SaleDetailModal({ item, onClose }) {
           </button>
         </div>
 
-        <div className="mt-3">
-          <DetailRow label="สาขา" value={item.branch} />
-          <DetailRow label="เลขที่สัญญา" value={item.contno} />
-          <DetailRow label="เงื่อนไขการขาย" value={item.sale_condition} />
-          <DetailRow label="เลขที่ใบจอง" value={item.resvno} />
-          <DetailRow label="ใบกำกับภาษี" value={item.taxno} />
-          <DetailRow label="ราคาส่ง" value={f2(item.wholesales)} />
-          <DetailRow label="MSRP" value={f2(item.msrp)} />
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+          <Field label="แบรนด์" value={item.brand} />
+          <Field label="รุ่นรถ" value={item.model_code} />
+          <Field label="เลขถัง" value={item.chassis_no} mono />
+          <Field label="สาขา" value={item.branch} />
+          <Field label="ชื่อลูกค้า" value={item.customer_name} />
+          <Field label="เงื่อนไขการขาย" value={item.sale_condition} />
+          <Field label="เลขที่สัญญา" value={item.contno} mono />
+          <Field label="เลขที่ใบจอง" value={item.resvno} mono />
+          <Field label="ใบกำกับภาษี" value={item.taxno} mono />
+          <Field label="วันที่จอง" value={formatIsoDate(item.resv_date)} />
+          <Field label="วันที่ขาย" value={formatIsoDate(item.sdate)} />
+          <Field label="วันที่ส่งมอบ" value={formatIsoDate(item.delivery_date)} />
+          <Field label="ราคาขาย" value={f2(item.sale_price)} />
+          <Field label="ราคาส่ง" value={f2(item.wholesales)} />
+          <Field label="MSRP" value={f2(item.msrp)} />
+          <Field label="ค่าทะเบียน" value={item.registration_total_paid != null ? f2(item.registration_total_paid) : '-'} />
+        </div>
+
+        <div className="mt-5 pt-4 border-t border-[#f1f3f6] flex items-center justify-between">
+          <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">สถานะทะเบียน</span>
+          {item.registration_paid ? (
+            <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
+              ชำระแล้ว
+            </span>
+          ) : (
+            <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+              ยังไม่ชำระ
+            </span>
+          )}
         </div>
       </div>
     </div>,
