@@ -140,10 +140,10 @@ router.post('/data/save', async (req, res, next) => {
         `INSERT INTO external_sales (
            contno, sale_type, locat, customer_name, branch, sale_condition,
            delivery_date, chassis_no, sale_price, wholesales, model_code, msrp,
-           sdate, taxno, taxdt, resvno, brand,
+           sdate, taxno, taxdt, resvno, resv_date, brand,
            registration_paid, registration_payment_count, registration_total_paid, registration_last_paid_at,
            synced_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21, now())
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22, now())
          ON CONFLICT (contno) DO UPDATE SET
            sale_type = EXCLUDED.sale_type,
            locat = EXCLUDED.locat,
@@ -160,6 +160,7 @@ router.post('/data/save', async (req, res, next) => {
            taxno = EXCLUDED.taxno,
            taxdt = EXCLUDED.taxdt,
            resvno = EXCLUDED.resvno,
+           resv_date = EXCLUDED.resv_date,
            brand = EXCLUDED.brand,
            registration_paid = EXCLUDED.registration_paid,
            registration_payment_count = EXCLUDED.registration_payment_count,
@@ -184,6 +185,7 @@ router.post('/data/save', async (req, res, next) => {
           it.taxno || '',
           it.taxdt || null,
           it.resvno || '',
+          it.resv_date || null,
           it.database_name || '',
           it.registration_paid ?? false,
           it.registration_payment_count ?? 0,

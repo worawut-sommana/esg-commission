@@ -22,7 +22,7 @@ router.get('/', async (req, res, next) => {
     const r = await pool.query(
       `SELECT contno, sale_type, locat, customer_name, branch, sale_condition,
               delivery_date, chassis_no, sale_price, wholesales, model_code, msrp,
-              sdate, taxno, taxdt, resvno, brand,
+              sdate, taxno, taxdt, resvno, resv_date, brand,
               registration_paid, registration_payment_count, registration_total_paid, registration_last_paid_at,
               synced_at
        FROM external_sales

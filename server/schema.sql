@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS external_sales (
   taxno TEXT NOT NULL DEFAULT '',
   taxdt TIMESTAMPTZ,
   resvno TEXT NOT NULL DEFAULT '',
+  resv_date TIMESTAMPTZ,
   brand TEXT NOT NULL DEFAULT '',
   registration_paid BOOLEAN NOT NULL DEFAULT false,
   registration_payment_count INTEGER NOT NULL DEFAULT 0,
@@ -99,6 +100,10 @@ CREATE TABLE IF NOT EXISTS external_sales (
   synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Column added after the initial release; keeps existing databases in sync
+-- since the CREATE TABLE above is a no-op once the table already exists.
+ALTER TABLE external_sales ADD COLUMN IF NOT EXISTS resv_date TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_external_sales_brand ON external_sales(brand);
 CREATE INDEX IF NOT EXISTS idx_external_sales_delivery_date ON external_sales(delivery_date);

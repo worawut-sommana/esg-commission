@@ -29,6 +29,7 @@ async function exportSalesToExcel(items, dateFrom, dateTo) {
     'เลขถัง': it.chassis_no,
     'เงื่อนไขการขาย': it.sale_condition,
     'เลขที่ใบจอง': it.resvno,
+    'วันที่จอง': formatIsoDate(it.resv_date),
     'ใบกำกับภาษี': it.taxno,
     'วันที่ขาย': formatIsoDate(it.sdate),
     'วันที่ส่งมอบ': formatIsoDate(it.delivery_date),
@@ -331,6 +332,7 @@ export default function SalesData() {
                     <th className={thL}>เลขถัง</th>
                     <th className={thL}>เงื่อนไขการขาย</th>
                     <th className={thL}>เลขที่ใบจอง</th>
+                    <th className={thL}>วันที่จอง</th>
                     <th className={thL}>ใบกำกับภาษี</th>
                     <th className={thL}>วันที่ขาย</th>
                     <th className={thL}>วันที่ส่งมอบ</th>
@@ -357,6 +359,7 @@ export default function SalesData() {
                       <td className={tdMono}>{it.chassis_no}</td>
                       <td className={tdL}>{it.sale_condition}</td>
                       <td className={tdMono}>{it.resvno}</td>
+                      <td className={tdL}>{formatIsoDate(it.resv_date)}</td>
                       <td className={tdMono}>{it.taxno}</td>
                       <td className={tdL}>{formatIsoDate(it.sdate)}</td>
                       <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
