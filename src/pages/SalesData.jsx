@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { card, thL, thC, thR, tdL, tdC, tdR, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, formatIsoDate } from '../lib/format';
 import { fetchSavedExternalSales } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -57,9 +58,11 @@ const DATE_PRESETS = [
 const TABS = [
   { key: 'list', label: 'รายการขาย' },
   { key: 'grouped', label: 'จัดกลุ่มตามรุ่นรถ / ค่าทะเบียน' },
+  { key: 'duplicates', label: 'เลขถังซ้ำ', adminOnly: true },
 ];
 
 export default function SalesData() {
+  const { user: me } = useAuth();
   const [tab, setTab] = useState('list');
   const [datePreset, setDatePreset] = useState('30d');
   const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
@@ -169,6 +172,21 @@ export default function SalesData() {
     });
   };
 
+  const duplicateChassisGroups = useMemo(() => {
+    const map = new Map();
+    for (const it of items) {
+      const vin = (it.chassis_no || '').trim();
+      if (!vin) continue;
+      if (!map.has(vin)) map.set(vin, []);
+      map.get(vin).push(it);
+    }
+    return [...map.values()]
+      .filter((rows) => rows.length > 1)
+      .sort((a, b) => b.length - a.length || a[0].chassis_no.localeCompare(b[0].chassis_no));
+  }, [items]);
+
+  const visibleTabs = TABS.filter((t) => !t.adminOnly || me?.isAdmin);
+
   return (
     <section className="appfade">
       <div className="mb-[22px]">
@@ -181,9 +199,23 @@ export default function SalesData() {
 
       <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
         <div className="flex gap-2 flex-wrap">
-          {TABS.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)} className={tab === t.key ? btnPrimary : btnGhost}>
+          {visibleTabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={(tab === t.key ? btnPrimary : btnGhost) + ' inline-flex items-center gap-2'}
+            >
               {t.label}
+              {t.key === 'duplicates' && duplicateChassisGroups.length > 0 && (
+                <span
+                  className={
+                    'inline-flex items-center justify-center min-w-[19px] h-[19px] px-[5px] rounded-full text-[11px] font-bold ' +
+                    (tab === t.key ? 'bg-white/25 text-white' : 'bg-[#fef2f2] text-[#b91c1c]')
+                  }
+                >
+                  {duplicateChassisGroups.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -475,6 +507,64 @@ export default function SalesData() {
                 );
               })}
               {!groupedByModelFee.length && <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบข้อมูลตามเงื่อนไขนี้</div>}
+            </div>
+          </div>
+          )}
+
+          {tab === 'duplicates' && me?.isAdmin && (
+          <div className={card}>
+            <div className="mb-[18px]">
+              <div className="font-bold text-[15px]">พบเลขถังซ้ำ {fi(duplicateChassisGroups.length)} คัน</div>
+              <div className="text-[12.5px] text-[#8a94a3] mt-1">
+                ตรวจสอบจาก {fi(items.length)} รายการ · {formatIsoDate(dateFrom)} ถึง {formatIsoDate(dateTo)}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-[14px]">
+              {duplicateChassisGroups.map((rows) => (
+                <div key={rows[0].chassis_no} className="border border-[#fecaca] rounded-[12px] overflow-hidden">
+                  <div className="flex items-center justify-between gap-3 px-4 py-[12px] bg-[#fef2f2] flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-[13.5px] text-[#b91c1c]">{rows[0].chassis_no}</span>
+                      <span className="text-[12.5px] text-[#8a94a3]">
+                        {rows[0].brand} {rows[0].model_code}
+                      </span>
+                    </div>
+                    <span className="text-[11.5px] font-semibold text-[#b91c1c] bg-white px-[9px] py-[3px] rounded-full">
+                      {fi(rows.length)} รายการ
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead>
+                        <tr className="bg-white">
+                          <th className={thL}>เลขที่สัญญา</th>
+                          <th className={thL}>ชื่อลูกค้า</th>
+                          <th className={thL}>ประเภทการขาย</th>
+                          <th className={thL}>วันที่ขาย</th>
+                          <th className={thL}>วันที่ส่งมอบ</th>
+                          <th className={thR}>ราคาขาย</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((it, i) => (
+                          <tr key={`${it.contno || i}`} className="border-t border-[#eef1f5]">
+                            <td className={tdMono}>{it.contno}</td>
+                            <td className={tdL}>{it.customer_name}</td>
+                            <td className={tdL}>{it.sale_type}</td>
+                            <td className={tdL}>{formatIsoDate(it.sdate)}</td>
+                            <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
+                            <td className={tdR}>{f2(it.sale_price)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+              {!duplicateChassisGroups.length && (
+                <div className="text-center p-11 text-[#98a2b3] text-sm">ไม่พบเลขถังซ้ำในช่วงวันที่นี้</div>
+              )}
             </div>
           </div>
           )}
