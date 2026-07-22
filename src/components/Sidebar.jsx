@@ -99,8 +99,15 @@ const NAV = [
   { key: 'financierMap', label: 'จับคู่เงื่อนไขการขาย', icon: FINANCIER_MAP_ICON },
   { key: 'external', label: 'ข้อมูลจาก L-one (API)', icon: EXTERNAL_ICON },
   { key: 'salesData', label: 'ข้อมูลการขาย', icon: SALES_DATA_ICON },
-  { key: 'vehicleReg', label: 'ตารางค่าทะเบียนรถ', icon: VEHICLE_REG_ICON },
-  { key: 'vehicleCampaign', label: 'ตารางแคมเปญ', icon: VEHICLE_CAMPAIGN_ICON },
+  {
+    key: 'masterData',
+    label: 'Master Data',
+    icon: VEHICLE_REG_ICON,
+    children: [
+      { key: 'vehicleReg', label: 'ตารางค่าทะเบียนรถ', icon: VEHICLE_REG_ICON },
+      { key: 'vehicleCampaign', label: 'ตารางแคมเปญ', icon: VEHICLE_CAMPAIGN_ICON },
+    ],
+  },
   { key: 'settings', label: 'ตั้งค่า', icon: SETTINGS_ICON },
 ];
 
