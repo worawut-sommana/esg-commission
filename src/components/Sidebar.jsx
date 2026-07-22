@@ -127,7 +127,7 @@ export default function Sidebar({ page, setPage }) {
         <div className="text-[11px] text-[var(--side-mut)] mt-2">ระบบค่าคอมรถยนต์ · Dashboard</div>
       </div>
 
-      <nav className="p-3 flex flex-col gap-1 flex-1">
+      <nav className="p-3 flex flex-col gap-1 flex-1 min-h-0 overflow-y-auto">
         {NAV.map((n) => {
           const on = page === n.key;
           return (
