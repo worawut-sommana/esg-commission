@@ -12,7 +12,29 @@ import {
 } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
+const API_ICON = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+  </svg>
+);
+
+const USERS_ICON = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
+const TABS = [
+  { key: 'integration', label: 'เชื่อมต่อ API ภายนอก', icon: API_ICON },
+  { key: 'users', label: 'จัดการผู้ใช้งาน', icon: USERS_ICON, adminOnly: true },
+];
+
 export default function Settings() {
+  const { user: me } = useAuth();
+  const [tab, setTab] = useState('integration');
   const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
   const [apiUrl, setApiUrl] = useState('');
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -85,16 +107,36 @@ export default function Settings() {
     }
   };
 
+  const visibleTabs = TABS.filter((t) => !t.adminOnly || me?.isAdmin);
+
   return (
     <section className="appfade">
       <div className="mb-[22px]">
         <div className="text-xs font-semibold tracking-[0.06em] uppercase text-[var(--ac)] mb-[6px]">ตั้งค่า</div>
-        <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">เชื่อมต่อ API ภายนอก</h1>
-        <div className="text-[#6b7686] text-[13.5px] mt-[6px]">
-          ตั้งค่า URL และ API Key สำหรับดึงข้อมูลยอดขายจากระบบ eaksahalink เพื่อตรวจสอบกับข้อมูลที่อัปโหลด
-        </div>
+        <h1 className="m-0 text-[27px] font-bold tracking-[-0.01em]">ตั้งค่าระบบ</h1>
+        <div className="text-[#6b7686] text-[13.5px] mt-[6px]">จัดการการเชื่อมต่อภายนอกและผู้ใช้งานในระบบ</div>
       </div>
 
+      <div className="inline-flex p-1 bg-[#f1f3f6] rounded-[13px] gap-1 mb-6">
+        {visibleTabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={
+              'flex items-center gap-2 px-4 py-[9px] rounded-[10px] text-[13.5px] font-semibold cursor-pointer border-none transition-all ' +
+              (tab === t.key
+                ? 'bg-white text-[var(--ac)] shadow-[0_1px_2px_rgba(16,24,40,0.06),0_1px_3px_rgba(16,24,40,0.08)]'
+                : 'bg-transparent text-[#6b7686] hover:text-[#1a2233]')
+            }
+          >
+            <span className="flex items-center justify-center">{t.icon}</span>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'integration' && (
+        <>
       {status === 'loading' && <div className="text-[#6b7686] text-[14px]">กำลังโหลด...</div>}
 
       {status !== 'loading' && (
@@ -228,8 +270,10 @@ export default function Settings() {
           )}
         </div>
       )}
+        </>
+      )}
 
-      <UserManagement />
+      {tab === 'users' && me?.isAdmin && <UserManagement />}
     </section>
   );
 }
@@ -327,7 +371,7 @@ function UserManagement() {
   };
 
   return (
-    <div className="mt-8">
+    <div>
       <div className="mb-[14px]">
         <h2 className="m-0 text-[18px] font-bold tracking-[-0.01em]">จัดการผู้ใช้งาน</h2>
         <div className="text-[#6b7686] text-[13px] mt-[4px]">เพิ่ม ลบ หรือเปลี่ยนสิทธิ์ผู้ใช้งานในระบบ</div>
