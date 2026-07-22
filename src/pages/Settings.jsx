@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { card, btnPrimary, btnGhost } from '../lib/styles';
-import { fi } from '../lib/format';
+import { card, btnPrimary, btnGhost, thL, tdL, tdMono } from '../lib/styles';
+import { fi, formatIsoDate } from '../lib/format';
 import {
   fetchIntegrationSettings,
   saveIntegrationSettings,
@@ -25,6 +25,8 @@ export default function Settings() {
   const [testing, setTesting] = useState(false);
   const [testMsg, setTestMsg] = useState('');
   const [testError, setTestError] = useState('');
+  const [testItems, setTestItems] = useState(null);
+  const [rawItem, setRawItem] = useState(null);
 
   const load = async () => {
     setStatus('loading');
@@ -66,6 +68,8 @@ export default function Settings() {
     setTesting(true);
     setTestMsg('');
     setTestError('');
+    setTestItems(null);
+    setRawItem(null);
     try {
       const r = await testIntegrationSettings({ apiUrl: apiUrl.trim(), apiKey: apiKeyInput.trim() });
       setTestMsg(
@@ -73,6 +77,7 @@ export default function Settings() {
           ? `เชื่อมต่อสำเร็จ — พบข้อมูลวันนี้ ${fi(r.total)} รายการ`
           : 'เชื่อมต่อสำเร็จ (ยังไม่มีข้อมูลของวันนี้)'
       );
+      setTestItems(r.items || []);
     } catch (err) {
       setTestError(err.message || 'ทดสอบการเชื่อมต่อไม่สำเร็จ');
     } finally {
@@ -151,6 +156,76 @@ export default function Settings() {
               {testing ? 'กำลังทดสอบ...' : 'ทดสอบการเชื่อมต่อ'}
             </button>
           </div>
+        </div>
+      )}
+
+      {testItems && (
+        <div className={card + ' max-w-[900px] mt-6'}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="m-0 text-[16px] font-bold tracking-[-0.01em]">ตัวอย่างข้อมูลจาก API</h2>
+              <div className="text-[#6b7686] text-[12.5px] mt-[4px]">
+                แสดง {testItems.length} รายการล่าสุดที่ดึงมาได้จากการทดสอบเชื่อมต่อ (ข้อมูลของวันนี้)
+              </div>
+            </div>
+            <button
+              onClick={() => setRawItem(rawItem ? null : 'all')}
+              className="px-[12px] py-[7px] bg-white border border-[#d7dce4] rounded-[8px] text-[12px] font-semibold text-[#5a6473] shrink-0"
+            >
+              {rawItem ? 'ซ่อน JSON' : 'ดู JSON ทั้งหมด'}
+            </button>
+          </div>
+
+          {testItems.length === 0 ? (
+            <div className="text-[#8a94a3] text-[13.5px]">ไม่มีข้อมูลของวันนี้</div>
+          ) : rawItem === 'all' ? (
+            <pre className="bg-[#0b1120] text-[#c9d4e3] text-[12px] leading-[1.6] rounded-xl p-4 overflow-auto max-h-[500px]">
+              {JSON.stringify(testItems, null, 2)}
+            </pre>
+          ) : (
+            <div className="overflow-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-[#e9edf3]">
+                    <th className={thL}>เลขที่สัญญา</th>
+                    <th className={thL}>ลูกค้า</th>
+                    <th className={thL}>แบรนด์</th>
+                    <th className={thL}>เลขที่ใบจอง</th>
+                    <th className={thL}>วันที่จอง</th>
+                    <th className={thL}>วันที่ขาย</th>
+                    <th className={thL}>วันที่ส่งมอบ</th>
+                    <th className={thL}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {testItems.map((it, i) => (
+                    <tr key={it.contno || i} className="border-b border-[#f1f3f6]">
+                      <td className={tdMono}>{it.contno}</td>
+                      <td className={tdL}>{it.customer_name}</td>
+                      <td className={tdL}>{it.brand || it.database_name}</td>
+                      <td className={tdMono}>{it.resvno}</td>
+                      <td className={tdL}>{formatIsoDate(it.resv_date)}</td>
+                      <td className={tdL}>{formatIsoDate(it.sdate)}</td>
+                      <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => setRawItem(rawItem === it ? null : it)}
+                          className="text-[11.5px] font-semibold text-[var(--ac)]"
+                        >
+                          JSON
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {rawItem && rawItem !== 'all' && (
+                <pre className="mt-3 bg-[#0b1120] text-[#c9d4e3] text-[12px] leading-[1.6] rounded-xl p-4 overflow-auto max-h-[400px]">
+                  {JSON.stringify(rawItem, null, 2)}
+                </pre>
+              )}
+            </div>
+          )}
         </div>
       )}
 

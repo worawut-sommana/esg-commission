@@ -77,7 +77,7 @@ router.post('/test', async (req, res, next) => {
     testUrl.searchParams.set('date_from', today);
     testUrl.searchParams.set('date_to', today);
     testUrl.searchParams.set('branch', '%');
-    testUrl.searchParams.set('limit', '1');
+    testUrl.searchParams.set('limit', '5');
     testUrl.searchParams.set('offset', '0');
 
     const upstream = await fetch(testUrl, { headers: { 'x-api-key': key } });
@@ -85,7 +85,7 @@ router.post('/test', async (req, res, next) => {
     if (!upstream.ok) {
       return res.status(upstream.status).json({ error: (body && body.detail) || `เชื่อมต่อไม่สำเร็จ (HTTP ${upstream.status})` });
     }
-    res.json({ ok: true, total: body.total ?? 0, brands: body.brands || [] });
+    res.json({ ok: true, total: body.total ?? 0, brands: body.brands || [], items: body.items || [] });
   } catch (err) {
     next(err);
   }
