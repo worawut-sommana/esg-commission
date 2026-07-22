@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { card, thL, thC, thR, tdL, tdC, tdR, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, formatIsoDate } from '../lib/format';
 import { fetchSavedExternalSales } from '../lib/api';
@@ -68,6 +69,7 @@ export default function SalesData() {
   const [items, setItems] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(new Set());
+  const [detailItem, setDetailItem] = useState(null);
 
   const [q, setQ] = useState('');
   const [brand, setBrand] = useState('');
@@ -320,25 +322,18 @@ export default function SalesData() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px] min-w-[2000px]">
+              <table className="w-full border-collapse text-[13px] min-w-[1200px]">
                 <thead>
                   <tr className="bg-[#f4f6fa]">
                     <th className={thC}>#</th>
                     <th className={thL}>แบรนด์</th>
-                    <th className={thL}>สาขา</th>
-                    <th className={thL}>เลขที่สัญญา</th>
-                    <th className={thL}>ชื่อลูกค้า</th>
                     <th className={thL}>รุ่นรถ</th>
                     <th className={thL}>เลขถัง</th>
-                    <th className={thL}>เงื่อนไขการขาย</th>
-                    <th className={thL}>เลขที่ใบจอง</th>
+                    <th className={thL}>ชื่อลูกค้า</th>
                     <th className={thL}>วันที่จอง</th>
-                    <th className={thL}>ใบกำกับภาษี</th>
                     <th className={thL}>วันที่ขาย</th>
                     <th className={thL}>วันที่ส่งมอบ</th>
                     <th className={thR}>ราคาขาย</th>
-                    <th className={thR}>ราคาส่ง</th>
-                    <th className={thR}>MSRP</th>
                     <th className={thR}>ค่าทะเบียน</th>
                     <th className={thC}>สถานะทะเบียน</th>
                   </tr>
@@ -348,24 +343,24 @@ export default function SalesData() {
                     <tr key={`${it.contno || it.chassis_no || 'row'}-${i}`} className="border-b border-[#eef1f5]">
                       <td className={tdC}>{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
                       <td className={tdL}>{it.brand}</td>
-                      <td className={tdL}>{it.branch}</td>
-                      <td className={tdMono}>{it.contno}</td>
-                      <td className={tdL}>{it.customer_name}</td>
                       <td className={tdL}>
                         <span className="inline-block px-[9px] py-[3px] bg-[#eef2fb] text-[var(--ac)] rounded-full text-[11.5px] font-semibold">
                           {it.model_code}
                         </span>
                       </td>
-                      <td className={tdMono}>{it.chassis_no}</td>
-                      <td className={tdL}>{it.sale_condition}</td>
-                      <td className={tdMono}>{it.resvno}</td>
+                      <td className={tdMono}>
+                        <button
+                          onClick={() => setDetailItem(it)}
+                          className="font-mono text-[12px] text-[var(--ac)] underline decoration-dotted underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                        >
+                          {it.chassis_no}
+                        </button>
+                      </td>
+                      <td className={tdL}>{it.customer_name}</td>
                       <td className={tdL}>{formatIsoDate(it.resv_date)}</td>
-                      <td className={tdMono}>{it.taxno}</td>
                       <td className={tdL}>{formatIsoDate(it.sdate)}</td>
                       <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
                       <td className={tdR}>{f2(it.sale_price)}</td>
-                      <td className={tdR}>{f2(it.wholesales)}</td>
-                      <td className={tdR}>{f2(it.msrp)}</td>
                       <td className={tdR}>{it.registration_total_paid != null ? f2(it.registration_total_paid) : '-'}</td>
                       <td className={tdC}>
                         {it.registration_paid ? (
@@ -485,6 +480,52 @@ export default function SalesData() {
           )}
         </>
       )}
+
+      <SaleDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
     </section>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-[10px] border-b border-[#f1f3f6] last:border-b-0">
+      <span className="text-[12.5px] text-[#8a94a3] font-semibold">{label}</span>
+      <span className="text-[13.5px] font-semibold text-right">{value || '-'}</span>
+    </div>
+  );
+}
+
+function SaleDetailModal({ item, onClose }) {
+  if (!item) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8" onClick={onClose}>
+      <div className={card + ' w-full max-w-[480px] my-auto'} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <div className="font-bold text-[16px]">
+              {item.brand} {item.model_code}
+            </div>
+            <div className="text-[12px] text-[#8a94a3] font-mono mt-[2px]">{item.chassis_no}</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#98a2b3] text-[18px] leading-none hover:bg-[#f4f6fa]"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mt-3">
+          <DetailRow label="สาขา" value={item.branch} />
+          <DetailRow label="เลขที่สัญญา" value={item.contno} />
+          <DetailRow label="เงื่อนไขการขาย" value={item.sale_condition} />
+          <DetailRow label="เลขที่ใบจอง" value={item.resvno} />
+          <DetailRow label="ใบกำกับภาษี" value={item.taxno} />
+          <DetailRow label="ราคาส่ง" value={f2(item.wholesales)} />
+          <DetailRow label="MSRP" value={f2(item.msrp)} />
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
