@@ -69,11 +69,16 @@ function commissionIsPaid(it) {
 }
 
 // registration_total_paid from the API mixes in any commission line items,
-// so prefer the non-commission sum from the breakdown when it's available.
+// so prefer the non-commission sum from the breakdown whenever a breakdown
+// exists at all — even one that nets to 0 because every line item on this
+// sale happened to be commission. Only fall back to the raw mixed total when
+// there's no breakdown data to split (e.g. an older unsynced record).
 function registrationFeeTotal(it) {
-  const rows = classifiedPayments(it).filter((p) => !p.isCommission);
-  if (rows.length) return rows.reduce((sum, p) => sum + (Number(p.payamt) || 0), 0);
-  return it.registration_total_paid != null ? Number(it.registration_total_paid) : null;
+  const all = classifiedPayments(it);
+  if (!all.length) {
+    return it.registration_total_paid != null ? Number(it.registration_total_paid) : null;
+  }
+  return all.filter((p) => !p.isCommission).reduce((sum, p) => sum + (Number(p.payamt) || 0), 0);
 }
 
 function getSortValue(it, key) {
@@ -613,7 +618,7 @@ export default function ExternalData() {
                       <td className={tdL}>{formatIsoDate(it.sdate)}</td>
                       <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
                       <td className={tdR}>{f2(it.sale_price)}</td>
-                      <td className={tdR}>{registrationFeeTotal(it) != null ? f2(registrationFeeTotal(it)) : '-'}</td>
+                      <td className={tdR}>{registrationFeeTotal(it) ? f2(registrationFeeTotal(it)) : '-'}</td>
                       <td className={tdR}>{commissionTotal(it) ? f2(commissionTotal(it)) : '-'}</td>
                     </tr>
                   ))}
@@ -682,7 +687,7 @@ function SaleDetailModal({ item, onClose }) {
           <Field label="ราคาขาย" value={f2(item.sale_price)} />
           <Field label="ราคาส่ง" value={f2(item.wholesales)} />
           <Field label="MSRP" value={f2(item.msrp)} />
-          <Field label="ค่าทะเบียน" value={registrationFeeTotal(item) != null ? f2(registrationFeeTotal(item)) : '-'} />
+          <Field label="ค่าทะเบียน" value={registrationFeeTotal(item) ? f2(registrationFeeTotal(item)) : '-'} />
           <Field label="ค่าคอม" value={commissionTotal(item) ? f2(commissionTotal(item)) : '-'} />
         </div>
 
