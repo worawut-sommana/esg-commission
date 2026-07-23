@@ -19,6 +19,31 @@ function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+function toIso(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+// The upstream API rejects ranges wider than ~93 days, so a full-year fetch
+// is split into 90-day windows and pulled one at a time.
+function yearWindows(year) {
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const today = new Date();
+  const todayUtc = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const yearEndCandidate = new Date(Date.UTC(year, 11, 31));
+  const yearEnd = yearEndCandidate > todayUtc ? todayUtc : yearEndCandidate;
+
+  const windows = [];
+  for (let start = yearStart; start <= yearEnd; ) {
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 89);
+    if (end > yearEnd) end.setTime(yearEnd.getTime());
+    windows.push([new Date(start), new Date(end)]);
+    start = new Date(end);
+    start.setUTCDate(start.getUTCDate() + 1);
+  }
+  return windows;
+}
+
 function getSortValue(it, key) {
   switch (key) {
     case 'brand':
@@ -46,9 +71,12 @@ function getSortValue(it, key) {
   }
 }
 
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+
 export default function ExternalData() {
   const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
   const [dateTo, setDateTo] = useState(todayIso());
+  const [year, setYear] = useState(YEAR_OPTIONS[0]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState('');
@@ -76,7 +104,10 @@ export default function ExternalData() {
   const [saveMessage, setSaveMessage] = useState('');
   const [saveError, setSaveError] = useState('');
 
+  const [fetchMode, setFetchMode] = useState('range');
+
   const onFetch = async () => {
+    setFetchMode('range');
     setLoading(true);
     setProgress(0);
     setError('');
@@ -106,6 +137,69 @@ export default function ExternalData() {
       }
 
       setResult({ ...meta, items, fetched: items.length });
+      setQ('');
+      setBrand('');
+      setBranch('');
+      setSaleType('');
+      setRegistration('');
+    } catch (err) {
+      setError(err.message || 'ดึงข้อมูลไม่สำเร็จ');
+      setResult(null);
+    } finally {
+      setLoading(false);
+      setProgress(null);
+    }
+  };
+
+  const onFetchYear = async () => {
+    setFetchMode('year');
+    setLoading(true);
+    setProgress(0);
+    setError('');
+    setSaveMessage('');
+    setSaveError('');
+    try {
+      const windows = yearWindows(year);
+      const pageSize = 1000;
+      let items = [];
+      let meta = null;
+
+      for (let wi = 0; wi < windows.length; wi++) {
+        const [wStart, wEnd] = windows[wi];
+        const df = toIso(wStart);
+        const dt = toIso(wEnd);
+        let offset = 0;
+        let windowTotal = null;
+        let windowFetched = 0;
+
+        while (true) {
+          const data = await fetchExternalSalesData({ date_from: df, date_to: dt, branch: '%', limit: pageSize, offset });
+          if (!meta) meta = data;
+          if (windowTotal === null) windowTotal = data.total || 0;
+          items = items.concat(data.items || []);
+          windowFetched += (data.items || []).length;
+
+          const windowFrac = windowTotal ? Math.min(1, windowFetched / windowTotal) : 1;
+          setProgress(Math.min(100, Math.round(((wi + windowFrac) / windows.length) * 100)));
+
+          offset += pageSize;
+          if (!data.items || !data.items.length || windowFetched >= windowTotal) break;
+        }
+      }
+
+      const first = windows[0];
+      const last = windows[windows.length - 1];
+      setResult({
+        ...meta,
+        items,
+        fetched: items.length,
+        total: items.length,
+        date_from: first ? toIso(first[0]) : null,
+        date_to: last ? toIso(last[1]) : null,
+        date_defaulted: false,
+      });
+      setDateFrom(first ? toIso(first[0]) : dateFrom);
+      setDateTo(last ? toIso(last[1]) : dateTo);
       setQ('');
       setBrand('');
       setBranch('');
@@ -193,9 +287,31 @@ export default function ExternalData() {
             />
           </label>
           <button onClick={onFetch} disabled={loading} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
-            {loading ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูล'}
+            {loading && fetchMode === 'range' ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูล'}
           </button>
         </div>
+
+        <div className="flex gap-3 flex-wrap items-end mt-4 pt-4 border-t border-[#eef1f5]">
+          <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+            ดึงข้อมูลรายปี
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+            >
+              {YEAR_OPTIONS.map((y) => (
+                <option key={y} value={y}>
+                  {y + 543}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button onClick={onFetchYear} disabled={loading} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+            {loading && fetchMode === 'year' ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูลรายปี'}
+          </button>
+          <span className="text-[11.5px] text-[#8a94a3]">ดึงทีละ 90 วันจนครบปี (API จำกัดช่วงวันที่ต่อครั้งไม่เกิน 93 วัน)</span>
+        </div>
+
         {loading && (
           <div className="mt-3 h-[6px] bg-[#eef1f5] rounded-full overflow-hidden">
             <div
