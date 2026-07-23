@@ -101,9 +101,14 @@ CREATE TABLE IF NOT EXISTS external_sales (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Column added after the initial release; keeps existing databases in sync
+-- Columns added after the initial release; keeps existing databases in sync
 -- since the CREATE TABLE above is a no-op once the table already exists.
+-- registration_payments / commission_payments hold the raw line-item payment
+-- breakdown from the source API (paydesc, fordesc, payfor, payamt, etc.) —
+-- registration_paid/_total_paid above stay as the derived summary fields.
 ALTER TABLE external_sales ADD COLUMN IF NOT EXISTS resv_date TIMESTAMPTZ;
+ALTER TABLE external_sales ADD COLUMN IF NOT EXISTS registration_payments JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE external_sales ADD COLUMN IF NOT EXISTS commission_payments JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS idx_external_sales_brand ON external_sales(brand);
 CREATE INDEX IF NOT EXISTS idx_external_sales_delivery_date ON external_sales(delivery_date);

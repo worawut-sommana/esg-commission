@@ -24,6 +24,7 @@ router.get('/', async (req, res, next) => {
               delivery_date, chassis_no, sale_price, wholesales, model_code, msrp,
               sdate, taxno, taxdt, resvno, resv_date, brand,
               registration_paid, registration_payment_count, registration_total_paid, registration_last_paid_at,
+              registration_payments, commission_payments,
               synced_at
        FROM external_sales
        ${where}

@@ -410,8 +410,15 @@ function Field({ label, value, mono }) {
   );
 }
 
+function paymentRowsFor(item) {
+  const reg = (item.registration_payments || []).map((p) => ({ ...p, kind: 'ค่าทะเบียน' }));
+  const com = (item.commission_payments || []).map((p) => ({ ...p, kind: 'คอมมิชชั่น' }));
+  return [...reg, ...com].sort((a, b) => new Date(b.billdt || 0) - new Date(a.billdt || 0));
+}
+
 function SaleDetailModal({ item, onClose }) {
   if (!item) return null;
+  const paymentRows = paymentRowsFor(item);
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8" onClick={onClose}>
       <div className={card + ' w-full max-w-[560px] my-auto'} onClick={(e) => e.stopPropagation()}>
@@ -446,6 +453,40 @@ function SaleDetailModal({ item, onClose }) {
           <Field label="MSRP" value={f2(item.msrp)} />
           <Field label="ค่าทะเบียน" value={item.registration_total_paid != null ? f2(item.registration_total_paid) : '-'} />
         </div>
+
+        {paymentRows.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-[#f1f3f6]">
+            <div className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em] mb-3">ประวัติการชำระ</div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12.5px]">
+                <thead>
+                  <tr className="bg-[#f8f9fb]">
+                    <th className={thL}>วันที่</th>
+                    <th className={thL}>รายการ</th>
+                    <th className={thL}>เลขที่บิล</th>
+                    <th className={thR}>จำนวนเงิน</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentRows.map((p, i) => (
+                    <tr key={i} className="border-b border-[#f1f3f6]">
+                      <td className={tdL}>{formatIsoDate(p.billdt)}</td>
+                      <td className={tdL}>
+                        <div className="font-semibold">{p.fordesc || p.paydesc || '-'}</div>
+                        <div className="text-[11px] text-[#8a94a3]">
+                          {p.kind}
+                          {p.paydesc && p.fordesc && p.paydesc !== p.fordesc ? ` · ${p.paydesc}` : ''}
+                        </div>
+                      </td>
+                      <td className={tdMono}>{p.billno}</td>
+                      <td className={tdR}>{f2(p.payamt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 pt-4 border-t border-[#f1f3f6] flex items-center justify-between">
           <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">สถานะทะเบียน</span>

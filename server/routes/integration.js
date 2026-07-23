@@ -142,8 +142,9 @@ router.post('/data/save', async (req, res, next) => {
            delivery_date, chassis_no, sale_price, wholesales, model_code, msrp,
            sdate, taxno, taxdt, resvno, resv_date, brand,
            registration_paid, registration_payment_count, registration_total_paid, registration_last_paid_at,
+           registration_payments, commission_payments,
            synced_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22, now())
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24, now())
          ON CONFLICT (contno) DO UPDATE SET
            sale_type = EXCLUDED.sale_type,
            locat = EXCLUDED.locat,
@@ -166,6 +167,8 @@ router.post('/data/save', async (req, res, next) => {
            registration_payment_count = EXCLUDED.registration_payment_count,
            registration_total_paid = EXCLUDED.registration_total_paid,
            registration_last_paid_at = EXCLUDED.registration_last_paid_at,
+           registration_payments = EXCLUDED.registration_payments,
+           commission_payments = EXCLUDED.commission_payments,
            synced_at = now()
          RETURNING (xmax = 0) AS inserted`,
         [
@@ -191,6 +194,8 @@ router.post('/data/save', async (req, res, next) => {
           it.registration_payment_count ?? 0,
           it.registration_total_paid,
           it.registration_last_paid_at || null,
+          JSON.stringify(it.registration_payments || []),
+          JSON.stringify(it.commission_payments || []),
         ]
       );
       if (r.rows[0].inserted) inserted++;
