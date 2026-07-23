@@ -33,9 +33,9 @@ const THAI_MONTHS = [
 const CURRENT_BUDDHIST_YEAR = new Date().getFullYear() + 543;
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => String(CURRENT_BUDDHIST_YEAR - 1 + i));
 
-function monthLabel(m) {
+function monthNumberLabel(m) {
   const i = Number(m);
-  return i >= 1 && i <= 12 ? THAI_MONTHS[i - 1] : m;
+  return i >= 1 && i <= 12 ? String(i).padStart(2, '0') : m;
 }
 
 const EMPTY_FORM = {
@@ -77,12 +77,6 @@ function getSortValue(r, key) {
       return Number(r.msrp) || 0;
     case 'rsPrice':
       return Number(r.rsPrice) || 0;
-    case 'msrpDiscount':
-      return Number(r.msrpDiscount) || 0;
-    case 'note':
-      return (r.note || '').toLowerCase();
-    case 'updatedBy':
-      return (r.updatedBy || '').toLowerCase();
     default:
       return '';
   }
@@ -619,24 +613,6 @@ export default function VehicleCampaign() {
                     sortDir={sortDir}
                     onSort={toggleSort}
                   />
-                  <SortTh
-                    label="MSRP - Discount"
-                    col="msrpDiscount"
-                    align="right"
-                    className={thR}
-                    sortKey={sortKey}
-                    sortDir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <SortTh label="หมายเหตุ" col="note" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                  <SortTh
-                    label="แก้ไขล่าสุดโดย"
-                    col="updatedBy"
-                    className={thL}
-                    sortKey={sortKey}
-                    sortDir={sortDir}
-                    onSort={toggleSort}
-                  />
                   <th className={thC}>จัดการ</th>
                 </tr>
               </thead>
@@ -646,19 +622,13 @@ export default function VehicleCampaign() {
                     <td className={tdL + ' font-bold'}>{r.brand}</td>
                     <td className={tdC}>{r.importType}</td>
                     <td className={tdL}>{r.model}</td>
-                    <td className={tdC}>{monthLabel(r.month)}</td>
+                    <td className={tdC}>{monthNumberLabel(r.month)}</td>
                     <td className={tdC}>{r.year}</td>
                     <td className={tdC}>{r.bookingControl}</td>
                     <td className={tdL}>{r.bookingStart}</td>
                     <td className={tdL}>{r.bookingEnd}</td>
                     <td className={tdR}>{f2(r.msrp)}</td>
                     <td className={tdR}>{f2(r.rsPrice)}</td>
-                    <td className={tdR + ' font-bold text-[var(--ac)]'}>{f2(r.msrpDiscount)}</td>
-                    <td className={tdL}>{r.note}</td>
-                    <td className={tdL + ' text-[#8a94a3] text-[12px]'} title={`เพิ่มโดย ${r.createdBy || '-'} · ${formatDateTime(r.createdAt)}`}>
-                      {r.updatedBy || '-'}
-                      <div className="text-[11px]">{formatDateTime(r.updatedAt)}</div>
-                    </td>
                     <td className={tdC}>
                       <div className="inline-flex items-center gap-2">
                         <button
@@ -680,14 +650,14 @@ export default function VehicleCampaign() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={14} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={11} className="text-center p-11 text-[#98a2b3] text-sm">
                       ยังไม่มีข้อมูลตารางแคมเปญ — กดปุ่ม "+ เพิ่มรายการ" ด้านบนเพื่อเริ่มต้น
                     </td>
                   </tr>
                 )}
                 {rows.length > 0 && !filteredRows.length && (
                   <tr>
-                    <td colSpan={14} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={11} className="text-center p-11 text-[#98a2b3] text-sm">
                       ไม่พบรายการที่ตรงกับตัวกรอง
                     </td>
                   </tr>
@@ -1029,6 +999,17 @@ export default function VehicleCampaign() {
                   />
                 </label>
               </div>
+
+              {editItem && (
+                <div className="mt-4 pt-4 border-t border-[#eef1f5] flex flex-wrap gap-x-6 gap-y-1 text-[12px] text-[#8a94a3]">
+                  <span>
+                    เพิ่มโดย {editItem.createdBy || '-'} · {formatDateTime(editItem.createdAt)}
+                  </span>
+                  <span>
+                    แก้ไขล่าสุดโดย {editItem.updatedBy || '-'} · {formatDateTime(editItem.updatedAt)}
+                  </span>
+                </div>
+              )}
 
               <div className="flex gap-[10px] justify-end mt-6">
                 <button onClick={onCloseEditModal} className={btnGhost}>
