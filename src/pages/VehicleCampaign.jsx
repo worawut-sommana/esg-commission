@@ -69,10 +69,6 @@ function getSortValue(r, key) {
       return Number(r.year) || 0;
     case 'bookingControl':
       return (r.bookingControl || '').toLowerCase();
-    case 'bookingStart':
-      return r.bookingStart || '';
-    case 'bookingEnd':
-      return r.bookingEnd || '';
     case 'msrp':
       return Number(r.msrp) || 0;
     case 'rsPrice':
@@ -587,22 +583,6 @@ export default function VehicleCampaign() {
                     sortDir={sortDir}
                     onSort={toggleSort}
                   />
-                  <SortTh
-                    label="วันเริ่มจอง"
-                    col="bookingStart"
-                    className={thL}
-                    sortKey={sortKey}
-                    sortDir={sortDir}
-                    onSort={toggleSort}
-                  />
-                  <SortTh
-                    label="สิ้นสุดวันที่จอง"
-                    col="bookingEnd"
-                    className={thL}
-                    sortKey={sortKey}
-                    sortDir={sortDir}
-                    onSort={toggleSort}
-                  />
                   <SortTh label="MSRP" col="msrp" align="right" className={thR} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortTh
                     label="RS Price"
@@ -625,8 +605,6 @@ export default function VehicleCampaign() {
                     <td className={tdC}>{monthNumberLabel(r.month)}</td>
                     <td className={tdC}>{r.year}</td>
                     <td className={tdC}>{r.bookingControl}</td>
-                    <td className={tdL}>{r.bookingStart}</td>
-                    <td className={tdL}>{r.bookingEnd}</td>
                     <td className={tdR}>{f2(r.msrp)}</td>
                     <td className={tdR}>{f2(r.rsPrice)}</td>
                     <td className={tdC}>
@@ -650,14 +628,14 @@ export default function VehicleCampaign() {
                 ))}
                 {!rows.length && (
                   <tr>
-                    <td colSpan={11} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={9} className="text-center p-11 text-[#98a2b3] text-sm">
                       ยังไม่มีข้อมูลตารางแคมเปญ — กดปุ่ม "+ เพิ่มรายการ" ด้านบนเพื่อเริ่มต้น
                     </td>
                   </tr>
                 )}
                 {rows.length > 0 && !filteredRows.length && (
                   <tr>
-                    <td colSpan={11} className="text-center p-11 text-[#98a2b3] text-sm">
+                    <td colSpan={9} className="text-center p-11 text-[#98a2b3] text-sm">
                       ไม่พบรายการที่ตรงกับตัวกรอง
                     </td>
                   </tr>
