@@ -594,11 +594,8 @@ export default function VehicleRegistration() {
 
       {showAddModal &&
         createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8"
-            onClick={onCloseAddModal}
-          >
-            <div className={card + ' w-full max-w-[560px] my-auto'} onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8">
+            <div className={card + ' w-full max-w-[560px] my-auto'}>
               <div className="flex items-center justify-between mb-5">
                 <div className="font-bold text-[16px]">เพิ่มรายการใหม่</div>
                 <button
