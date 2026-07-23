@@ -14,6 +14,7 @@ import financierMappingRouter from './routes/financierMapping.js';
 import externalSalesRouter from './routes/externalSales.js';
 import vehicleRegistrationsRouter from './routes/vehicleRegistrations.js';
 import vehicleCampaignsRouter from './routes/vehicleCampaigns.js';
+import vehicleModelsRouter from './routes/vehicleModels.js';
 
 if (!process.env.SESSION_SECRET) {
   throw new Error('SESSION_SECRET is not set. Add it to your .env file (see .env.example).');
@@ -51,6 +52,7 @@ app.use('/api/financier-mapping', requireAuth, financierMappingRouter);
 app.use('/api/external-sales', requireAuth, externalSalesRouter);
 app.use('/api/vehicle-registrations', requireAuth, vehicleRegistrationsRouter);
 app.use('/api/vehicle-campaigns', requireAuth, vehicleCampaignsRouter);
+app.use('/api/vehicle-models', requireAuth, vehicleModelsRouter);
 
 app.use(express.static(distDir));
 app.get(/^(?!\/api).*/, (req, res) => {

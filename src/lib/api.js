@@ -197,6 +197,38 @@ export function importVehicleCampaigns(rows) {
   }).then(handle);
 }
 
+export function fetchVehicleModels() {
+  return fetch('/api/vehicle-models').then(handle);
+}
+
+export function createVehicleModel(entry) {
+  return fetch('/api/vehicle-models', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry),
+  }).then(handle);
+}
+
+export function updateVehicleModel(id, patch) {
+  return fetch(`/api/vehicle-models/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  }).then(handle);
+}
+
+export function deleteVehicleModel(id) {
+  return fetch(`/api/vehicle-models/${id}`, { method: 'DELETE' }).then(handle);
+}
+
+export function syncVehicleModelsFromSales() {
+  return fetch('/api/vehicle-models/sync-from-sales', { method: 'POST' }).then(handle);
+}
+
+export function fetchVehicleModelActivity() {
+  return fetch('/api/vehicle-models/activity').then(handle);
+}
+
 export function fetchVehicleCampaignActivity() {
   return fetch('/api/vehicle-campaigns/activity').then(handle);
 }

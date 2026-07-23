@@ -70,6 +70,14 @@ const VEHICLE_CAMPAIGN_ICON = (
   </svg>
 );
 
+const VEHICLE_MODEL_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13z" />
+    <path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-3" />
+    <path d="M8 9h8" />
+  </svg>
+);
+
 const SETTINGS_ICON = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="3" />
@@ -106,6 +114,7 @@ const NAV = [
     children: [
       { key: 'vehicleReg', label: 'ตารางค่าทะเบียนรถ', icon: VEHICLE_REG_ICON },
       { key: 'vehicleCampaign', label: 'ตารางแคมเปญ', icon: VEHICLE_CAMPAIGN_ICON },
+      { key: 'vehicleModel', label: 'ทะเบียนยี่ห้อ รุ่นรถ', icon: VEHICLE_MODEL_ICON },
     ],
   },
   { key: 'settings', label: 'ตั้งค่า', icon: SETTINGS_ICON },

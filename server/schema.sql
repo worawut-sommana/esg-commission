@@ -175,6 +175,22 @@ ALTER TABLE vehicle_campaigns ADD COLUMN IF NOT EXISTS updated_by TEXT NOT NULL 
 
 CREATE INDEX IF NOT EXISTS idx_vehicle_campaigns_brand ON vehicle_campaigns(brand);
 
+-- Master registry of brand/model pairs (see "ทะเบียนยี่ห้อ รุ่นรถ"). Can be
+-- populated by hand or synced in bulk from the distinct brand/model_code
+-- pairs already present in external_sales.
+CREATE TABLE IF NOT EXISTS vehicle_models (
+  id BIGSERIAL PRIMARY KEY,
+  brand TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL DEFAULT '',
+  updated_by TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (brand, model)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_models_brand ON vehicle_models(brand);
+
 -- Audit trail of add/edit/delete actions on vehicle_registrations and
 -- vehicle_campaigns. Deleted rows are gone from the source table, so this is
 -- the only place a delete stays visible; username is snapshotted at the time
