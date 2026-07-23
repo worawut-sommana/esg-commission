@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { card, thL, thC, thR, tdL, tdC, tdR, tdMono, btnPrimary, btnGhost, selectStyle } from '../lib/styles';
 import { f2, fi, formatIsoDate } from '../lib/format';
 import { fetchExternalSalesData, saveExternalSalesData } from '../lib/api';
+import SortTh from '../components/SortTh';
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -17,6 +19,33 @@ function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+function getSortValue(it, key) {
+  switch (key) {
+    case 'brand':
+      return (it.database_name || '').toLowerCase();
+    case 'model_code':
+      return (it.model_code || '').toLowerCase();
+    case 'chassis_no':
+      return (it.chassis_no || '').toLowerCase();
+    case 'customer_name':
+      return (it.customer_name || '').toLowerCase();
+    case 'resv_date':
+      return it.resv_date ? new Date(it.resv_date).getTime() : -Infinity;
+    case 'sdate':
+      return it.sdate ? new Date(it.sdate).getTime() : -Infinity;
+    case 'delivery_date':
+      return it.delivery_date ? new Date(it.delivery_date).getTime() : -Infinity;
+    case 'sale_price':
+      return Number(it.sale_price) || 0;
+    case 'registration_total_paid':
+      return it.registration_total_paid != null ? Number(it.registration_total_paid) : -Infinity;
+    case 'registration_paid':
+      return it.registration_paid ? 1 : 0;
+    default:
+      return '';
+  }
+}
+
 export default function ExternalData() {
   const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
   const [dateTo, setDateTo] = useState(todayIso());
@@ -30,6 +59,18 @@ export default function ExternalData() {
   const [branch, setBranch] = useState('');
   const [saleType, setSaleType] = useState('');
   const [registration, setRegistration] = useState('');
+  const [sortKey, setSortKey] = useState('sdate');
+  const [sortDir, setSortDir] = useState('desc');
+  const [detailItem, setDetailItem] = useState(null);
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
 
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -99,8 +140,13 @@ export default function ExternalData() {
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(needle));
       })
-      .sort((a, b) => new Date(b.sdate || 0) - new Date(a.sdate || 0));
-  }, [items, q, brand, branch, saleType, registration]);
+      .sort((a, b) => {
+        const av = getSortValue(a, sortKey);
+        const bv = getSortValue(b, sortKey);
+        const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+  }, [items, q, brand, branch, saleType, registration, sortKey, sortDir]);
 
   const onSave = async () => {
     setSaving(true);
@@ -249,24 +295,58 @@ export default function ExternalData() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px] min-w-[1600px]">
+              <table className="w-full border-collapse text-[13px] min-w-[1200px]">
                 <thead>
                   <tr className="bg-[#f4f6fa]">
                     <th className={thC}>#</th>
-                    <th className={thL}>แบรนด์</th>
-                    <th className={thL}>สาขา</th>
-                    <th className={thL}>เลขที่สัญญา</th>
-                    <th className={thL}>ชื่อลูกค้า</th>
-                    <th className={thL}>รุ่นรถ</th>
-                    <th className={thL}>เลขถัง</th>
-                    <th className={thL}>เงื่อนไขการขาย</th>
-                    <th className={thL}>วันที่ขาย</th>
-                    <th className={thL}>วันที่ส่งมอบ</th>
-                    <th className={thR}>ราคาขาย</th>
-                    <th className={thR}>ราคาส่ง</th>
-                    <th className={thR}>MSRP</th>
-                    <th className={thR}>ค่าทะเบียน</th>
-                    <th className={thC}>สถานะทะเบียน</th>
+                    <SortTh label="แบรนด์" col="brand" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh label="รุ่นรถ" col="model_code" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh label="เลขถัง" col="chassis_no" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh
+                      label="ชื่อลูกค้า"
+                      col="customer_name"
+                      className={thL}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortTh label="วันที่จอง" col="resv_date" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh label="วันที่ขาย" col="sdate" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh
+                      label="วันที่ส่งมอบ"
+                      col="delivery_date"
+                      className={thL}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortTh
+                      label="ราคาขาย"
+                      col="sale_price"
+                      align="right"
+                      className={thR}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortTh
+                      label="ค่าทะเบียน"
+                      col="registration_total_paid"
+                      align="right"
+                      className={thR}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortTh
+                      label="สถานะทะเบียน"
+                      col="registration_paid"
+                      align="center"
+                      className={thC}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>
@@ -274,21 +354,24 @@ export default function ExternalData() {
                     <tr key={`${it.contno || it.chassis_no || 'row'}-${i}`} className="border-b border-[#eef1f5]">
                       <td className={tdC}>{i + 1}</td>
                       <td className={tdL}>{it.database_name}</td>
-                      <td className={tdL}>{it.branch}</td>
-                      <td className={tdMono}>{it.contno}</td>
-                      <td className={tdL}>{it.customer_name}</td>
                       <td className={tdL}>
                         <span className="inline-block px-[9px] py-[3px] bg-[#eef2fb] text-[var(--ac)] rounded-full text-[11.5px] font-semibold">
                           {it.model_code}
                         </span>
                       </td>
-                      <td className={tdMono}>{it.chassis_no}</td>
-                      <td className={tdL}>{it.sale_condition}</td>
+                      <td className={tdMono}>
+                        <button
+                          onClick={() => setDetailItem(it)}
+                          className="font-mono text-[12px] text-[var(--ac)] underline decoration-dotted underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                        >
+                          {it.chassis_no}
+                        </button>
+                      </td>
+                      <td className={tdL}>{it.customer_name}</td>
+                      <td className={tdL}>{formatIsoDate(it.resv_date)}</td>
                       <td className={tdL}>{formatIsoDate(it.sdate)}</td>
                       <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
                       <td className={tdR}>{f2(it.sale_price)}</td>
-                      <td className={tdR}>{f2(it.wholesales)}</td>
-                      <td className={tdR}>{f2(it.msrp)}</td>
                       <td className={tdR}>{it.registration_total_paid != null ? f2(it.registration_total_paid) : '-'}</td>
                       <td className={tdC}>
                         {it.registration_paid ? (
@@ -310,6 +393,74 @@ export default function ExternalData() {
           </div>
         </>
       )}
+
+      <SaleDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
     </section>
+  );
+}
+
+function Field({ label, value, mono }) {
+  return (
+    <div className="flex flex-col gap-[3px] min-w-0">
+      <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">{label}</span>
+      <span className={'text-[13.5px] font-semibold text-[#1a2233] truncate' + (mono ? ' font-mono text-[12.5px]' : '')}>
+        {value || value === 0 ? value : '-'}
+      </span>
+    </div>
+  );
+}
+
+function SaleDetailModal({ item, onClose }) {
+  if (!item) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8" onClick={onClose}>
+      <div className={card + ' w-full max-w-[560px] my-auto'} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="font-bold text-[16px]">รายละเอียดการขาย</div>
+            <div className="text-[12px] text-[#8a94a3] font-mono mt-[2px]">{item.chassis_no}</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#98a2b3] text-[18px] leading-none hover:bg-[#f4f6fa]"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+          <Field label="แบรนด์" value={item.database_name} />
+          <Field label="รุ่นรถ" value={item.model_code} />
+          <Field label="เลขถัง" value={item.chassis_no} mono />
+          <Field label="สาขา" value={item.branch} />
+          <Field label="ชื่อลูกค้า" value={item.customer_name} />
+          <Field label="เงื่อนไขการขาย" value={item.sale_condition} />
+          <Field label="เลขที่สัญญา" value={item.contno} mono />
+          <Field label="เลขที่ใบจอง" value={item.resvno} mono />
+          <Field label="ใบกำกับภาษี" value={item.taxno} mono />
+          <Field label="วันที่จอง" value={formatIsoDate(item.resv_date)} />
+          <Field label="วันที่ขาย" value={formatIsoDate(item.sdate)} />
+          <Field label="วันที่ส่งมอบ" value={formatIsoDate(item.delivery_date)} />
+          <Field label="ราคาขาย" value={f2(item.sale_price)} />
+          <Field label="ราคาส่ง" value={f2(item.wholesales)} />
+          <Field label="MSRP" value={f2(item.msrp)} />
+          <Field label="ค่าทะเบียน" value={item.registration_total_paid != null ? f2(item.registration_total_paid) : '-'} />
+        </div>
+
+        <div className="mt-5 pt-4 border-t border-[#f1f3f6] flex items-center justify-between">
+          <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">สถานะทะเบียน</span>
+          {item.registration_paid ? (
+            <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
+              ชำระแล้ว
+            </span>
+          ) : (
+            <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+              ยังไม่ชำระ
+            </span>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
