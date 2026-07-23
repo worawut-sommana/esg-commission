@@ -635,14 +635,29 @@ export default function ExternalData() {
   );
 }
 
-function Field({ label, value, mono }) {
+function Field({ label, value, mono, badge }) {
   return (
     <div className="flex flex-col gap-[3px] min-w-0">
       <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">{label}</span>
-      <span className={'text-[13.5px] font-semibold text-[#1a2233] truncate' + (mono ? ' font-mono text-[12.5px]' : '')}>
-        {value || value === 0 ? value : '-'}
+      <span className="flex items-center gap-2 flex-wrap">
+        <span className={'text-[13.5px] font-semibold text-[#1a2233] truncate' + (mono ? ' font-mono text-[12.5px]' : '')}>
+          {value || value === 0 ? value : '-'}
+        </span>
+        {badge}
       </span>
     </div>
+  );
+}
+
+function StatusBadge({ paid, paidLabel, unpaidLabel }) {
+  return paid ? (
+    <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
+      {paidLabel}
+    </span>
+  ) : (
+    <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+      {unpaidLabel}
+    </span>
   );
 }
 
@@ -687,8 +702,16 @@ function SaleDetailModal({ item, onClose }) {
           <Field label="ราคาขาย" value={f2(item.sale_price)} />
           <Field label="ราคาส่ง" value={f2(item.wholesales)} />
           <Field label="MSRP" value={f2(item.msrp)} />
-          <Field label="ค่าทะเบียน" value={registrationFeeTotal(item) ? f2(registrationFeeTotal(item)) : '-'} />
-          <Field label="ค่าคอม" value={commissionTotal(item) ? f2(commissionTotal(item)) : '-'} />
+          <Field
+            label="ค่าทะเบียน"
+            value={registrationFeeTotal(item) ? f2(registrationFeeTotal(item)) : '-'}
+            badge={<StatusBadge paid={item.registration_paid} paidLabel="ชำระแล้ว" unpaidLabel="ยังไม่ชำระ" />}
+          />
+          <Field
+            label="ค่าคอม"
+            value={commissionTotal(item) ? f2(commissionTotal(item)) : '-'}
+            badge={<StatusBadge paid={commissionIsPaid(item)} paidLabel="จ่ายแล้ว" unpaidLabel="ยังไม่จ่าย" />}
+          />
         </div>
 
         {paymentRows.length > 0 && (
@@ -724,32 +747,6 @@ function SaleDetailModal({ item, onClose }) {
             </div>
           </div>
         )}
-
-        <div className="mt-5 pt-4 border-t border-[#f1f3f6] flex items-center justify-between">
-          <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">สถานะทะเบียน</span>
-          {item.registration_paid ? (
-            <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
-              ชำระแล้ว
-            </span>
-          ) : (
-            <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
-              ยังไม่ชำระ
-            </span>
-          )}
-        </div>
-
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">สถานะค่าคอม</span>
-          {commissionIsPaid(item) ? (
-            <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
-              จ่ายแล้ว
-            </span>
-          ) : (
-            <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
-              ยังไม่จ่าย
-            </span>
-          )}
-        </div>
       </div>
     </div>,
     document.body
