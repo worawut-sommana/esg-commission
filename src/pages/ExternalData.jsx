@@ -73,9 +73,34 @@ function getSortValue(it, key) {
 
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
 
+const THAI_MONTHS = [
+  'มกราคม',
+  'กุมภาพันธ์',
+  'มีนาคม',
+  'เมษายน',
+  'พฤษภาคม',
+  'มิถุนายน',
+  'กรกฎาคม',
+  'สิงหาคม',
+  'กันยายน',
+  'ตุลาคม',
+  'พฤศจิกายน',
+  'ธันวาคม',
+];
+
+const FETCH_MODES = [
+  { key: 'day', label: 'รายวัน' },
+  { key: 'month', label: 'รายเดือน' },
+  { key: 'year', label: 'รายปี' },
+  { key: 'custom', label: 'กำหนดเอง' },
+];
+
 export default function ExternalData() {
+  const [mode, setMode] = useState('day');
   const [dateFrom, setDateFrom] = useState(daysAgoIso(30));
   const [dateTo, setDateTo] = useState(todayIso());
+  const [day, setDay] = useState(todayIso());
+  const [monthNum, setMonthNum] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(YEAR_OPTIONS[0]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(null);
@@ -104,10 +129,9 @@ export default function ExternalData() {
   const [saveMessage, setSaveMessage] = useState('');
   const [saveError, setSaveError] = useState('');
 
-  const [fetchMode, setFetchMode] = useState('range');
-
-  const onFetch = async () => {
-    setFetchMode('range');
+  // The upstream API paginates (max ~1000 rows/page), so loop until every
+  // matching row for the date range has been collected, updating % as we go.
+  const runFetch = async (df, dt) => {
     setLoading(true);
     setProgress(0);
     setError('');
@@ -119,16 +143,8 @@ export default function ExternalData() {
       let items = [];
       let meta = null;
 
-      // The upstream API paginates (max ~1000 rows/page), so loop until every
-      // matching row for the date range has been collected, updating % as we go.
       while (true) {
-        const data = await fetchExternalSalesData({
-          date_from: dateFrom,
-          date_to: dateTo,
-          branch: '%',
-          limit: pageSize,
-          offset,
-        });
+        const data = await fetchExternalSalesData({ date_from: df, date_to: dt, branch: '%', limit: pageSize, offset });
         if (!meta) meta = data;
         items = items.concat(data.items || []);
         setProgress(data.total ? Math.min(100, Math.round((items.length / data.total) * 100)) : 100);
@@ -151,8 +167,17 @@ export default function ExternalData() {
     }
   };
 
+  const onFetchDay = () => runFetch(day, day);
+
+  const onFetchMonth = () => {
+    const first = toIso(new Date(Date.UTC(year, monthNum - 1, 1)));
+    const last = toIso(new Date(Date.UTC(year, monthNum, 0)));
+    runFetch(first, last);
+  };
+
+  const onFetchCustom = () => runFetch(dateFrom, dateTo);
+
   const onFetchYear = async () => {
-    setFetchMode('year');
     setLoading(true);
     setProgress(0);
     setError('');
@@ -198,8 +223,6 @@ export default function ExternalData() {
         date_to: last ? toIso(last[1]) : null,
         date_defaulted: false,
       });
-      setDateFrom(first ? toIso(first[0]) : dateFrom);
-      setDateTo(last ? toIso(last[1]) : dateTo);
       setQ('');
       setBrand('');
       setBranch('');
@@ -267,50 +290,120 @@ export default function ExternalData() {
       </div>
 
       <div className={card + ' mb-5'}>
-        <div className="flex gap-3 flex-wrap items-end">
-          <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
-            วันที่เริ่ม
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
-            />
-          </label>
-          <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
-            วันที่สิ้นสุด
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
-            />
-          </label>
-          <button onClick={onFetch} disabled={loading} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
-            {loading && fetchMode === 'range' ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูล'}
-          </button>
+        <div className="flex gap-2 flex-wrap mb-4">
+          {FETCH_MODES.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setMode(m.key)}
+              disabled={loading}
+              className={(mode === m.key ? btnPrimary : btnGhost) + ' disabled:opacity-60 disabled:cursor-not-allowed'}
+            >
+              {m.label}
+            </button>
+          ))}
         </div>
 
-        <div className="flex gap-3 flex-wrap items-end mt-4 pt-4 border-t border-[#eef1f5]">
-          <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
-            ดึงข้อมูลรายปี
-            <select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
-            >
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y + 543}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button onClick={onFetchYear} disabled={loading} className={btnGhost + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
-            {loading && fetchMode === 'year' ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูลรายปี'}
-          </button>
-          <span className="text-[11.5px] text-[#8a94a3]">ดึงทีละ 90 วันจนครบปี (API จำกัดช่วงวันที่ต่อครั้งไม่เกิน 93 วัน)</span>
-        </div>
+        {mode === 'day' && (
+          <div className="flex gap-3 flex-wrap items-end">
+            <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+              วันที่
+              <input
+                type="date"
+                value={day}
+                onChange={(e) => setDay(e.target.value)}
+                className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+              />
+            </label>
+            <button onClick={onFetchDay} disabled={loading} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              {loading ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูล'}
+            </button>
+          </div>
+        )}
+
+        {mode === 'month' && (
+          <div className="flex gap-3 flex-wrap items-end">
+            <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+              เดือน
+              <select
+                value={monthNum}
+                onChange={(e) => setMonthNum(Number(e.target.value))}
+                className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+              >
+                {THAI_MONTHS.map((label, i) => (
+                  <option key={label} value={i + 1}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+              ปี
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+              >
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={y}>
+                    {y + 543}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button onClick={onFetchMonth} disabled={loading} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              {loading ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูล'}
+            </button>
+          </div>
+        )}
+
+        {mode === 'year' && (
+          <div className="flex gap-3 flex-wrap items-end">
+            <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+              ปี
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+              >
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={y}>
+                    {y + 543}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button onClick={onFetchYear} disabled={loading} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              {loading ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูล'}
+            </button>
+            <span className="text-[11.5px] text-[#8a94a3]">ดึงทีละ 90 วันจนครบปี (API จำกัดช่วงวันที่ต่อครั้งไม่เกิน 93 วัน)</span>
+          </div>
+        )}
+
+        {mode === 'custom' && (
+          <div className="flex gap-3 flex-wrap items-end">
+            <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+              วันที่เริ่ม
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+              />
+            </label>
+            <label className="flex flex-col gap-[5px] text-[11.5px] text-[#6b7686] font-semibold">
+              วันที่สิ้นสุด
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="px-3 py-[9px] border border-[#d7dce4] rounded-[10px] text-[13.5px]"
+              />
+            </label>
+            <button onClick={onFetchCustom} disabled={loading} className={btnPrimary + ' disabled:opacity-60 disabled:cursor-not-allowed'}>
+              {loading ? `กำลังดึงข้อมูล... ${progress ?? 0}%` : 'ดึงข้อมูล'}
+            </button>
+          </div>
+        )}
 
         {loading && (
           <div className="mt-3 h-[6px] bg-[#eef1f5] rounded-full overflow-hidden">
