@@ -24,18 +24,12 @@ function getSortValue(it, key) {
   switch (key) {
     case 'brand':
       return (it.brand || '').toLowerCase();
-    case 'branch':
-      return (it.branch || '').toLowerCase();
-    case 'contno':
-      return (it.contno || '').toLowerCase();
     case 'model_code':
       return (it.model_code || '').toLowerCase();
     case 'chassis_no':
       return (it.chassis_no || '').toLowerCase();
     case 'customer_name':
       return (it.customer_name || '').toLowerCase();
-    case 'sale_condition':
-      return (it.sale_condition || '').toLowerCase();
     case 'resv_date':
       return it.resv_date ? new Date(it.resv_date).getTime() : -Infinity;
     case 'sdate':
@@ -44,10 +38,6 @@ function getSortValue(it, key) {
       return it.delivery_date ? new Date(it.delivery_date).getTime() : -Infinity;
     case 'sale_price':
       return Number(it.sale_price) || 0;
-    case 'wholesales':
-      return Number(it.wholesales) || 0;
-    case 'msrp':
-      return Number(it.msrp) || 0;
     case 'registration_total_paid':
       return it.registration_total_paid != null ? Number(it.registration_total_paid) : -Infinity;
     case 'registration_paid':
@@ -408,13 +398,13 @@ export default function SalesData() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px] min-w-[1600px]">
+              <table className="w-full border-collapse text-[13px] min-w-[1200px]">
                 <thead>
                   <tr className="bg-[#f4f6fa]">
                     <th className={thC}>#</th>
                     <SortTh label="แบรนด์" col="brand" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                    <SortTh label="สาขา" col="branch" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                    <SortTh label="เลขที่สัญญา" col="contno" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh label="รุ่นรถ" col="model_code" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh label="เลขถัง" col="chassis_no" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                     <SortTh
                       label="ชื่อลูกค้า"
                       col="customer_name"
@@ -423,16 +413,7 @@ export default function SalesData() {
                       sortDir={sortDir}
                       onSort={toggleSort}
                     />
-                    <SortTh label="รุ่นรถ" col="model_code" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                    <SortTh label="เลขถัง" col="chassis_no" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                    <SortTh
-                      label="เงื่อนไขการขาย"
-                      col="sale_condition"
-                      className={thL}
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onSort={toggleSort}
-                    />
+                    <SortTh label="วันที่จอง" col="resv_date" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                     <SortTh label="วันที่ขาย" col="sdate" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                     <SortTh
                       label="วันที่ส่งมอบ"
@@ -445,24 +426,6 @@ export default function SalesData() {
                     <SortTh
                       label="ราคาขาย"
                       col="sale_price"
-                      align="right"
-                      className={thR}
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onSort={toggleSort}
-                    />
-                    <SortTh
-                      label="ราคาส่ง"
-                      col="wholesales"
-                      align="right"
-                      className={thR}
-                      sortKey={sortKey}
-                      sortDir={sortDir}
-                      onSort={toggleSort}
-                    />
-                    <SortTh
-                      label="MSRP"
-                      col="msrp"
                       align="right"
                       className={thR}
                       sortKey={sortKey}
@@ -494,9 +457,6 @@ export default function SalesData() {
                     <tr key={`${it.contno || it.chassis_no || 'row'}-${i}`} className="border-b border-[#eef1f5]">
                       <td className={tdC}>{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
                       <td className={tdL}>{it.brand}</td>
-                      <td className={tdL}>{it.branch}</td>
-                      <td className={tdMono}>{it.contno}</td>
-                      <td className={tdL}>{it.customer_name}</td>
                       <td className={tdL}>
                         <span className="inline-block px-[9px] py-[3px] bg-[#eef2fb] text-[var(--ac)] rounded-full text-[11.5px] font-semibold">
                           {it.model_code}
@@ -510,12 +470,11 @@ export default function SalesData() {
                           {it.chassis_no}
                         </button>
                       </td>
-                      <td className={tdL}>{it.sale_condition}</td>
+                      <td className={tdL}>{it.customer_name}</td>
+                      <td className={tdL}>{formatIsoDate(it.resv_date)}</td>
                       <td className={tdL}>{formatIsoDate(it.sdate)}</td>
                       <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
                       <td className={tdR}>{f2(it.sale_price)}</td>
-                      <td className={tdR}>{f2(it.wholesales)}</td>
-                      <td className={tdR}>{f2(it.msrp)}</td>
                       <td className={tdR}>{it.registration_total_paid != null ? f2(it.registration_total_paid) : '-'}</td>
                       <td className={tdC}>
                         {it.registration_paid ? (
