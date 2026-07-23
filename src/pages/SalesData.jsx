@@ -19,6 +19,51 @@ function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+function getSortValue(it, key) {
+  switch (key) {
+    case 'brand':
+      return (it.brand || '').toLowerCase();
+    case 'model_code':
+      return (it.model_code || '').toLowerCase();
+    case 'chassis_no':
+      return (it.chassis_no || '').toLowerCase();
+    case 'customer_name':
+      return (it.customer_name || '').toLowerCase();
+    case 'resv_date':
+      return it.resv_date ? new Date(it.resv_date).getTime() : -Infinity;
+    case 'sdate':
+      return it.sdate ? new Date(it.sdate).getTime() : -Infinity;
+    case 'delivery_date':
+      return it.delivery_date ? new Date(it.delivery_date).getTime() : -Infinity;
+    case 'sale_price':
+      return Number(it.sale_price) || 0;
+    case 'registration_total_paid':
+      return it.registration_total_paid != null ? Number(it.registration_total_paid) : -Infinity;
+    case 'registration_paid':
+      return it.registration_paid ? 1 : 0;
+    default:
+      return '';
+  }
+}
+
+function SortTh({ label, col, align = 'left', sortKey, sortDir, onSort, className }) {
+  const active = sortKey === col;
+  const justify = align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start';
+  return (
+    <th className={className}>
+      <button
+        onClick={() => onSort(col)}
+        className={'inline-flex items-center gap-[5px] cursor-pointer bg-transparent border-none p-0 font-inherit text-inherit w-full ' + justify}
+      >
+        <span>{label}</span>
+        <span className={'text-[9px] leading-none ' + (active ? 'text-[var(--ac)]' : 'text-[#c7cdd6]')}>
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 async function exportSalesToExcel(items, dateFrom, dateTo) {
   const XLSX = await import('xlsx');
   const rows = items.map((it, i) => ({
@@ -79,6 +124,17 @@ export default function SalesData() {
   const [branch, setBranch] = useState('');
   const [saleType, setSaleType] = useState('');
   const [registration, setRegistration] = useState('');
+  const [sortKey, setSortKey] = useState('sdate');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
 
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(1);
@@ -131,12 +187,17 @@ export default function SalesData() {
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(needle));
       })
-      .sort((a, b) => new Date(b.sdate || 0) - new Date(a.sdate || 0));
-  }, [items, q, brand, branch, saleType, registration]);
+      .sort((a, b) => {
+        const av = getSortValue(a, sortKey);
+        const bv = getSortValue(b, sortKey);
+        const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+  }, [items, q, brand, branch, saleType, registration, sortKey, sortDir]);
 
   useEffect(() => {
     setPage(1);
-  }, [items, q, brand, branch, saleType, registration]);
+  }, [items, q, brand, branch, saleType, registration, sortKey, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -358,16 +419,54 @@ export default function SalesData() {
                 <thead>
                   <tr className="bg-[#f4f6fa]">
                     <th className={thC}>#</th>
-                    <th className={thL}>แบรนด์</th>
-                    <th className={thL}>รุ่นรถ</th>
-                    <th className={thL}>เลขถัง</th>
-                    <th className={thL}>ชื่อลูกค้า</th>
-                    <th className={thL}>วันที่จอง</th>
-                    <th className={thL}>วันที่ขาย</th>
-                    <th className={thL}>วันที่ส่งมอบ</th>
-                    <th className={thR}>ราคาขาย</th>
-                    <th className={thR}>ค่าทะเบียน</th>
-                    <th className={thC}>สถานะทะเบียน</th>
+                    <SortTh label="แบรนด์" col="brand" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh label="รุ่นรถ" col="model_code" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh label="เลขถัง" col="chassis_no" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh
+                      label="ชื่อลูกค้า"
+                      col="customer_name"
+                      className={thL}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortTh label="วันที่จอง" col="resv_date" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh label="วันที่ขาย" col="sdate" className={thL} sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                    <SortTh
+                      label="วันที่ส่งมอบ"
+                      col="delivery_date"
+                      className={thL}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortTh
+                      label="ราคาขาย"
+                      col="sale_price"
+                      align="right"
+                      className={thR}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortTh
+                      label="ค่าทะเบียน"
+                      col="registration_total_paid"
+                      align="right"
+                      className={thR}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
+                    <SortTh
+                      label="สถานะทะเบียน"
+                      col="registration_paid"
+                      align="center"
+                      className={thC}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>
