@@ -20,6 +20,38 @@ function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+// The source system files commission payouts inside registration_payments
+// too (only fordesc/paydesc says "Commission" — payfor/paytyp don't reliably
+// distinguish it), so line items are split by that text rather than by which
+// array they arrived in.
+function isCommissionPayment(p) {
+  const text = `${p.fordesc || ''} ${p.paydesc || ''}`.toLowerCase();
+  return text.includes('commission');
+}
+
+function classifiedPayments(it) {
+  const all = [...(it.registration_payments || []), ...(it.commission_payments || [])];
+  return all.map((p) => ({ ...p, isCommission: isCommissionPayment(p) }));
+}
+
+function commissionTotal(it) {
+  return classifiedPayments(it)
+    .filter((p) => p.isCommission)
+    .reduce((sum, p) => sum + (Number(p.payamt) || 0), 0);
+}
+
+function commissionIsPaid(it) {
+  return classifiedPayments(it).some((p) => p.isCommission);
+}
+
+// registration_total_paid from the API mixes in any commission line items,
+// so prefer the non-commission sum from the breakdown when it's available.
+function registrationFeeTotal(it) {
+  const rows = classifiedPayments(it).filter((p) => !p.isCommission);
+  if (rows.length) return rows.reduce((sum, p) => sum + (Number(p.payamt) || 0), 0);
+  return it.registration_total_paid != null ? Number(it.registration_total_paid) : null;
+}
+
 function getSortValue(it, key) {
   switch (key) {
     case 'brand':
@@ -39,9 +71,9 @@ function getSortValue(it, key) {
     case 'sale_price':
       return Number(it.sale_price) || 0;
     case 'registration_total_paid':
-      return it.registration_total_paid != null ? Number(it.registration_total_paid) : -Infinity;
-    case 'registration_paid':
-      return it.registration_paid ? 1 : 0;
+      return registrationFeeTotal(it) != null ? registrationFeeTotal(it) : -Infinity;
+    case 'commission_total':
+      return commissionTotal(it);
     default:
       return '';
   }
@@ -66,8 +98,10 @@ async function exportSalesToExcel(items, dateFrom, dateTo) {
     'ราคาขาย': it.sale_price ?? '',
     'ราคาส่ง': it.wholesales ?? '',
     'MSRP': it.msrp ?? '',
-    'ค่าทะเบียน': it.registration_total_paid ?? '',
+    'ค่าทะเบียน': registrationFeeTotal(it) ?? '',
     'สถานะทะเบียน': it.registration_paid ? 'ชำระแล้ว' : 'ยังไม่ชำระ',
+    'ค่าคอม': commissionTotal(it) || '',
+    'สถานะค่าคอม': commissionIsPaid(it) ? 'จ่ายแล้ว' : 'ยังไม่จ่าย',
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
@@ -398,7 +432,7 @@ export default function SalesData() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px] min-w-[1200px]">
+              <table className="w-full border-collapse text-[13px] min-w-[1250px]">
                 <thead>
                   <tr className="bg-[#f4f6fa]">
                     <th className={thC}>#</th>
@@ -442,10 +476,10 @@ export default function SalesData() {
                       onSort={toggleSort}
                     />
                     <SortTh
-                      label="สถานะทะเบียน"
-                      col="registration_paid"
-                      align="center"
-                      className={thC}
+                      label="ค่าคอม"
+                      col="commission_total"
+                      align="right"
+                      className={thR}
                       sortKey={sortKey}
                       sortDir={sortDir}
                       onSort={toggleSort}
@@ -475,18 +509,8 @@ export default function SalesData() {
                       <td className={tdL}>{formatIsoDate(it.sdate)}</td>
                       <td className={tdL}>{formatIsoDate(it.delivery_date)}</td>
                       <td className={tdR}>{f2(it.sale_price)}</td>
-                      <td className={tdR}>{it.registration_total_paid != null ? f2(it.registration_total_paid) : '-'}</td>
-                      <td className={tdC}>
-                        {it.registration_paid ? (
-                          <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
-                            ชำระแล้ว
-                          </span>
-                        ) : (
-                          <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
-                            ยังไม่ชำระ
-                          </span>
-                        )}
-                      </td>
+                      <td className={tdR}>{registrationFeeTotal(it) != null ? f2(registrationFeeTotal(it)) : '-'}</td>
+                      <td className={tdR}>{commissionTotal(it) ? f2(commissionTotal(it)) : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -670,9 +694,9 @@ function Field({ label, value, mono }) {
 }
 
 function paymentRowsFor(item) {
-  const reg = (item.registration_payments || []).map((p) => ({ ...p, kind: 'ค่าทะเบียน' }));
-  const com = (item.commission_payments || []).map((p) => ({ ...p, kind: 'คอมมิชชั่น' }));
-  return [...reg, ...com].sort((a, b) => new Date(b.billdt || 0) - new Date(a.billdt || 0));
+  return classifiedPayments(item)
+    .map((p) => ({ ...p, kind: p.isCommission ? 'คอมมิชชั่น' : 'ค่าทะเบียน' }))
+    .sort((a, b) => new Date(b.billdt || 0) - new Date(a.billdt || 0));
 }
 
 function SaleDetailModal({ item, onClose }) {
@@ -710,7 +734,8 @@ function SaleDetailModal({ item, onClose }) {
           <Field label="ราคาขาย" value={f2(item.sale_price)} />
           <Field label="ราคาส่ง" value={f2(item.wholesales)} />
           <Field label="MSRP" value={f2(item.msrp)} />
-          <Field label="ค่าทะเบียน" value={item.registration_total_paid != null ? f2(item.registration_total_paid) : '-'} />
+          <Field label="ค่าทะเบียน" value={registrationFeeTotal(item) != null ? f2(registrationFeeTotal(item)) : '-'} />
+          <Field label="ค่าคอม" value={commissionTotal(item) ? f2(commissionTotal(item)) : '-'} />
         </div>
 
         {paymentRows.length > 0 && (
@@ -756,6 +781,19 @@ function SaleDetailModal({ item, onClose }) {
           ) : (
             <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
               ยังไม่ชำระ
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-[10.5px] text-[#8a94a3] font-bold uppercase tracking-[0.03em]">สถานะค่าคอม</span>
+          {commissionIsPaid(item) ? (
+            <span className="inline-block px-[9px] py-[3px] bg-[#ecfdf3] text-[#15803d] rounded-full text-[11.5px] font-semibold">
+              จ่ายแล้ว
+            </span>
+          ) : (
+            <span className="inline-block px-[9px] py-[3px] bg-[#f4f6fa] text-[#8a94a3] rounded-full text-[11.5px] font-semibold">
+              ยังไม่จ่าย
             </span>
           )}
         </div>
